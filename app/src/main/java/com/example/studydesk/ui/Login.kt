@@ -18,59 +18,133 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+
 
 @Composable
 fun Login(){
 
-    var username by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var modal by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ){
 
-        Text(text = "Nombre")
+        Text(
+            text = "Correo",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Color(0xFF1E2050)
+
+        )
 
         OutlinedTextField(
-            value = username,
+            value = correo,
             onValueChange = { nuevoTexto ->
-                username = nuevoTexto
+                correo = nuevoTexto
             },
-            label = { Text("Introduce tu nombre") },
-            modifier = Modifier.fillMaxWidth()
+            placeholder = { Text("nombre@correo.cl") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Contraseña")
+        Text(
+            text = "Contraseña",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Color(0xFF1E2050)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
             value = password,
             onValueChange = { nuevoTexto ->
                 password = nuevoTexto
             },
-            label = { Text("Introduce tu contraseña") },
-            modifier = Modifier.fillMaxWidth()
+            placeholder = { Text("••••••••") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
         )
 
         Spacer(modifier = Modifier.height(42.dp))
 
         Button(
             onClick = { modal = true },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF3C4EB4)
+            )
         ) {
-            Text(text = "Enviar")
+            Text(
+                text = "Iniciar sesión",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = { }) {
+            Text(
+                text = "¿Olvidaste tu contraseña?",
+                color = Color(0xFF3C4EB4),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "¿Aún no tienes cuenta?",
+            color = Color(0xFF6E7191),
+            fontSize = 14.sp
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { modal = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFF3C4EB4)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFF3C4EB4)
+            )
+        ) {
+            Text(
+                text = "Registrarme",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
         }
 
         if(modal){
             AlertDialog(
                 onDismissRequest = { modal = false },
                 title = { Text("Mensaje") },
-                text = { Text("Se debe crear el usuario: $username con la contraseña:$password") },
+                text = { Text("Se debe crear el usuario: $correo con la contraseña:$password") },
                 confirmButton = {
                     Button(onClick = { modal = false }) {
                         Text("OK")
