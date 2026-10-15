@@ -20,8 +20,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             StudyDeskTheme{
-                //Login()
-                Registro()
+                Login()
+                //Registro()
             }
         }
     }
