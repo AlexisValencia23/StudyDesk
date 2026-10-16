@@ -3,6 +3,7 @@ package com.example.studydesk
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.example.studydesk.ui.Apuntes
 import com.example.studydesk.ui.Entregas
 import com.example.studydesk.ui.Inicio
 import com.example.studydesk.ui.Login
@@ -16,7 +17,9 @@ class MainActivity : ComponentActivity() {
                 //Login()
                 //Registro()
                 //Inicio()
-                Entregas()
+                //Entregas()
+                Apuntes()
+
 
             }
         }
