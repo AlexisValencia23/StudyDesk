@@ -7,6 +7,7 @@ import com.example.studydesk.ui.Apuntes
 import com.example.studydesk.ui.Entregas
 import com.example.studydesk.ui.Inicio
 import com.example.studydesk.ui.Login
+import com.example.studydesk.ui.Material
 import com.example.studydesk.ui.theme.StudyDeskTheme
 
 class MainActivity : ComponentActivity() {
@@ -18,7 +19,9 @@ class MainActivity : ComponentActivity() {
                 //Registro()
                 //Inicio()
                 //Entregas()
-                Apuntes()
+                //Apuntes()
+                Material()
+
 
 
             }
