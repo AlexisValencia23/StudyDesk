@@ -39,6 +39,7 @@ private val Lavanda = Color(0xFFE8EAF6)
 
 @Composable
 fun Inicio(
+    nombre: String,
     onIrAMaterial: () -> Unit = {}
 ) {
     Column(
@@ -52,7 +53,7 @@ fun Inicio(
         Column {
             Text(text = "Jueves 15 de octubre", fontSize = 12.sp, color = TextoSuave)
             Text(
-                text = "Hola, 'Nombre'",
+                text = "Hola, $nombre",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextoOscuro
@@ -145,6 +146,6 @@ private fun FilaItem(titulo: String, materia: String, fecha: String) {
 @Composable
 fun InicioPreview() {
     StudyDeskTheme {
-        Inicio()
+        Inicio(nombre = "Estudiante")
     }
 }
