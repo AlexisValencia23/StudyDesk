@@ -1,3 +1,4 @@
+
 package com.example.studydesk.ui
 
 import androidx.compose.foundation.BorderStroke
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,35 +41,31 @@ import com.example.studydesk.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
-
-
 @Composable
-fun Login(onLoginSuccess: () -> Unit) {
-
+fun Login(
+    onLoginSuccess: () -> Unit,
+    onRegistro: () -> Unit
+) {
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var modal by remember { mutableStateOf(false) }
-
     var cargando by remember { mutableStateOf(false) }
+    var mostrarError by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
 
-    var mostrarError by remember { mutableStateOf(false) }
     val correoError = mostrarError && correo.isBlank()
     val passwordError = mostrarError && password.isBlank()
 
-    fun abrirModal() { modal = true }
-    fun cerrarModal() { modal = false }
-
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start
     ) {
-
         Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "Logo de StudyFlow",
+            contentDescription = "Logo de StudyDesk",
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(96.dp)
@@ -91,16 +87,24 @@ fun Login(onLoginSuccess: () -> Unit) {
             onValueChange = { nuevoTexto ->
                 correo = nuevoTexto
             },
-            placeholder = { Text("nombre@correo.cl") },
+            placeholder = {
+                Text("nombre@correo.cl")
+            },
             isError = correoError,
             supportingText = {
                 if (correoError) {
-                    Text("El correo es obligatorio", color = Color.Red)
+                    Text(
+                        "El correo es obligatorio",
+                        color = Color.Red
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            singleLine = true
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email
+            )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -119,13 +123,20 @@ fun Login(onLoginSuccess: () -> Unit) {
             onValueChange = { nuevoTexto ->
                 password = nuevoTexto
             },
-            placeholder = { Text("••••••••") },
+            placeholder = {
+                Text("••••••••")
+            },
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password
+            ),
             isError = passwordError,
             supportingText = {
                 if (passwordError) {
-                    Text("La contraseña es obligatoria", color = Color.Red)
+                    Text(
+                        "La contraseña es obligatoria",
+                        color = Color.Red
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -166,14 +177,20 @@ fun Login(onLoginSuccess: () -> Unit) {
                     color = Color.White
                 )
             } else {
-                Text("Iniciar sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    text = "Iniciar sesión",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(
-            onClick = { },
+            onClick = {
+                // Pendiente: recuperar contraseña
+            },
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
             Text(
@@ -196,12 +213,17 @@ fun Login(onLoginSuccess: () -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
-            onClick = { modal = true },
+            onClick = {
+                onRegistro()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Color(0xFF3C4EB4)),
+            border = BorderStroke(
+                1.dp,
+                Color(0xFF3C4EB4)
+            ),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = Color(0xFF3C4EB4)
             )
@@ -210,17 +232,6 @@ fun Login(onLoginSuccess: () -> Unit) {
                 text = "Registrarme",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
-            )
-        }
-
-        if (modal) {
-            AlertDialog(
-                onDismissRequest = { },
-                title = { Text("Confirmación") },
-                text = { Text("Formulario enviado correctamente") },
-                confirmButton = {
-                    Button(onClick = { cerrarModal() }) { Text("OK") }
-                }
             )
         }
     }
