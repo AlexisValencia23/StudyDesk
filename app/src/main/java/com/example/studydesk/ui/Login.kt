@@ -41,8 +41,11 @@ import com.example.studydesk.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+
+
+
 @Composable
-fun Login() {
+fun Login(onLoginSuccess: () -> Unit) {
 
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -143,7 +146,7 @@ fun Login() {
                     scope.launch {
                         delay(2000)
                         cargando = false
-                        abrirModal()
+                        onLoginSuccess()
                     }
                 }
             },
