@@ -41,10 +41,12 @@ import com.example.studydesk.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@Composable
-fun Login(onLoginSuccess: (String) -> Unit) {
 
-    var nombre by remember { mutableStateOf("") }
+
+
+@Composable
+fun Login(onLoginSuccess: () -> Unit) {
+
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var modal by remember { mutableStateOf(false) }
@@ -55,8 +57,6 @@ fun Login(onLoginSuccess: (String) -> Unit) {
     var mostrarError by remember { mutableStateOf(false) }
     val correoError = mostrarError && correo.isBlank()
     val passwordError = mostrarError && password.isBlank()
-    val nombreError = mostrarError && nombre.isBlank()
-
 
     fun abrirModal() { modal = true }
     fun cerrarModal() { modal = false }
@@ -80,42 +80,11 @@ fun Login(onLoginSuccess: (String) -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Nombre",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = Color(0xFF1E2050)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = nombre,
-            onValueChange = { nuevoTexto ->
-                nombre = nuevoTexto
-            },
-            placeholder = { Text("Nombre") },
-            isError = nombreError,
-            supportingText = {
-                if (nombreError) {
-                    Text("El nombre es obligatorio", color = Color.Red)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
             text = "Correo",
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = Color(0xFF1E2050)
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
 
         OutlinedTextField(
             value = correo,
@@ -177,7 +146,7 @@ fun Login(onLoginSuccess: (String) -> Unit) {
                     scope.launch {
                         delay(2000)
                         cargando = false
-                        onLoginSuccess(nombre)
+                        onLoginSuccess()
                     }
                 }
             },

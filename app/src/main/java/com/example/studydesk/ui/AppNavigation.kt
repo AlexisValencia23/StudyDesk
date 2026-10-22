@@ -15,17 +15,16 @@ fun AppNavigation() {
     ) {
         composable("login") {
             Login(
-                onLoginSuccess = { nombreIngresado ->
-                    navController.navigate("inicio/$nombreIngresado") {
+                onLoginSuccess = {
+                    navController.navigate("inicio") {
                         popUpTo("login") { inclusive = true }
                     }
                 }
             )
         }
 
-        composable("inicio/{nombre}") { backStackEntry ->
-            val nombreUsuario = backStackEntry.arguments?.getString("nombre") ?: "Usuario"
-            Inicio(nombre = nombreUsuario)
+        composable("inicio") {
+            Inicio()
         }
     }
 }
