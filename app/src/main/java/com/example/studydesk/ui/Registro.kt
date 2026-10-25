@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -40,6 +41,8 @@ private val TextoSuave = Color(0xFF4A5073)
 @Composable
 fun Registro(
     mensajeError: String? = null,
+    mostrarCuentaCreada: Boolean = false,
+    onAceptarCuentaCreada: () -> Unit = {},
     onCrearCuenta: (nombre: String, correo: String, contrasena: String, perfil: String) -> Unit = { _, _, _, _ -> },
     onIniciarSesion: () -> Unit = {}
 ) {
@@ -158,6 +161,22 @@ fun Registro(
             TextButton(onClick = onIniciarSesion) {
                 Text(text = "Iniciar sesión", color = Indigo, fontWeight = FontWeight.Bold)
             }
+        }
+
+        if (mostrarCuentaCreada) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Cuenta creada") },
+                text = { Text("Tu cuenta se creó correctamente. ¡Bienvenido/a a StudyFlow!") },
+                confirmButton = {
+                    Button(
+                        onClick = onAceptarCuentaCreada,
+                        colors = ButtonDefaults.buttonColors(containerColor = Indigo)
+                    ) {
+                        Text("Continuar")
+                    }
+                }
+            )
         }
     }
 }

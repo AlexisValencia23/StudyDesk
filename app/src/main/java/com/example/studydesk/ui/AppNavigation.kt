@@ -44,6 +44,9 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
     // Nombre del usuario que inició sesión
     var nombreUsuario by remember { mutableStateOf("Usuario") }
 
+    // Muestra el modal "Cuenta creada" después de registrarse
+    var mostrarCuentaCreada by remember { mutableStateOf(false) }
+
     Scaffold(
         bottomBar = {
             // La barra solo se muestra en las 4 pantallas principales
@@ -87,12 +90,17 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
             composable("registro") {
                 Registro(
                     mensajeError = usuarioViewModel.mensajeError,
+                    mostrarCuentaCreada = mostrarCuentaCreada,
+                    onAceptarCuentaCreada = {
+                        mostrarCuentaCreada = false
+                        navController.navigate("inicio") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
                     onCrearCuenta = { nombre, correo, contrasena, perfil ->
                         usuarioViewModel.registrar(nombre, correo, contrasena, perfil) { nombreGuardado ->
                             nombreUsuario = nombreGuardado
-                            navController.navigate("inicio") {
-                                popUpTo("login") { inclusive = true }
-                            }
+                            mostrarCuentaCreada = true
                         }
                     },
                     onIniciarSesion = {
