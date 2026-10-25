@@ -1,5 +1,7 @@
 package com.example.studydesk.ui
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -25,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.studydesk.model.Apunte
 import com.example.studydesk.notification.Notificaciones
 import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
@@ -152,7 +155,8 @@ fun AppNavigation(
                     },
                     onEditarApunte = { apunte, titulo, contenido ->
                         apunteViewModel.editarApunte(apunte, titulo, contenido)
-                    }
+                    },
+                    onCompartir = { apunte -> compartirApunte(context, apunte) }
                 )
             }
             composable("material") { Material() }
@@ -167,4 +171,15 @@ private fun irAPestana(navController: NavController, ruta: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+// Abre el selector de Android para enviar el apunte como texto (WhatsApp, correo, etc.)
+private fun compartirApunte(context: Context, apunte: Apunte) {
+    val texto = "${apunte.titulo} (${apunte.materia})\n\n${apunte.contenido}"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, apunte.titulo)
+        putExtra(Intent.EXTRA_TEXT, texto)
+    }
+    context.startActivity(Intent.createChooser(intent, "Compartir apunte"))
 }
