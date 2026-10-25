@@ -68,10 +68,13 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
         ) {
             composable("login") {
                 Login(
-                    onLoginSuccess = { nombreIngresado ->
-                        nombreUsuario = nombreIngresado
-                        navController.navigate("inicio") {
-                            popUpTo("login") { inclusive = true }
+                    mensajeError = usuarioViewModel.mensajeError,
+                    onIniciarSesion = { correo, contrasena ->
+                        usuarioViewModel.iniciarSesion(correo, contrasena) { nombreGuardado ->
+                            nombreUsuario = nombreGuardado
+                            navController.navigate("inicio") {
+                                popUpTo("login") { inclusive = true }
+                            }
                         }
                     },
                     onRegistro = {

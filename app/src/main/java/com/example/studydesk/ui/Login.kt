@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,26 +35,20 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studydesk.R
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun Login(
-    onLoginSuccess: (String) -> Unit,
+    mensajeError: String? = null,
+    onIniciarSesion: (correo: String, contrasena: String) -> Unit,
     onRegistro: () -> Unit = {}
 ) {
 
-    var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
-    var cargando by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     var mostrarError by remember { mutableStateOf(false) }
     val correoError = mostrarError && correo.isBlank()
     val passwordError = mostrarError && password.isBlank()
-    val nombreError = mostrarError && nombre.isBlank()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -77,32 +69,6 @@ fun Login(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Nombre",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = Color(0xFF1E2050)
-        )
-
-        OutlinedTextField(
-            value = nombre,
-            onValueChange = { nuevoTexto ->
-                nombre = nuevoTexto
-            },
-            placeholder = { Text("Nombre") },
-            isError = nombreError,
-            supportingText = {
-                if (nombreError) {
-                    Text("El nombre es obligatorio", color = Color.Red)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
             text = "Correo",
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
@@ -115,6 +81,7 @@ fun Login(
                 correo = nuevoTexto
             },
             placeholder = { Text("nombre@correo.cl") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             isError = correoError,
             supportingText = {
                 if (correoError) {
@@ -156,7 +123,12 @@ fun Login(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(42.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (mensajeError != null) {
+            Text(text = mensajeError, color = Color.Red, fontSize = 13.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         Button(
             onClick = {
@@ -164,16 +136,9 @@ fun Login(
                     mostrarError = true
                 } else {
                     mostrarError = false
-                    cargando = true
-
-                    scope.launch {
-                        delay(2000)
-                        cargando = false
-                        onLoginSuccess(nombre)
-                    }
+                    onIniciarSesion(correo, password)
                 }
             },
-            enabled = !cargando,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -182,15 +147,7 @@ fun Login(
                 containerColor = Color(0xFF3C4EB4)
             )
         ) {
-            if (cargando) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.5.dp,
-                    color = Color.White
-                )
-            } else {
-                Text("Iniciar sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
+            Text("Iniciar sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
