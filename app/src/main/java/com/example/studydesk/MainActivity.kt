@@ -10,10 +10,12 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.studydesk.model.AppDatabase
 import com.example.studydesk.notification.Notificaciones
+import com.example.studydesk.repository.ApunteRepository
 import com.example.studydesk.repository.EntregaRepository
 import com.example.studydesk.repository.UsuarioRepository
 import com.example.studydesk.ui.AppNavigation
 import com.example.studydesk.ui.theme.StudyDeskTheme
+import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
@@ -31,6 +33,9 @@ class MainActivity : ComponentActivity() {
     private val entregaRepository by lazy { EntregaRepository(db.entregaDao()) }
     private val entregaViewModel by lazy { EntregaViewModel(entregaRepository) }
 
+    private val apunteRepository by lazy { ApunteRepository(db.apunteDao()) }
+    private val apunteViewModel by lazy { ApunteViewModel(apunteRepository) }
+
     // Pide el permiso de notificaciones; si el usuario lo rechaza, simplemente no se muestran avisos
     private val solicitarPermisoNotificaciones =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -43,7 +48,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StudyDeskTheme {
-                AppNavigation(usuarioViewModel, entregaViewModel)
+                AppNavigation(usuarioViewModel, entregaViewModel, apunteViewModel)
             }
         }
     }

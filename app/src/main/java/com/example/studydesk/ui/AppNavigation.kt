@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.studydesk.notification.Notificaciones
+import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
@@ -42,13 +43,15 @@ private val pestanas = listOf(
 @Composable
 fun AppNavigation(
     usuarioViewModel: UsuarioViewModel,
-    entregaViewModel: EntregaViewModel
+    entregaViewModel: EntregaViewModel,
+    apunteViewModel: ApunteViewModel
 ) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
     val context = LocalContext.current
     val entregas by entregaViewModel.entregas.collectAsState()
+    val apuntes by apunteViewModel.apuntes.collectAsState()
 
     // Nombre del usuario que inició sesión
     var nombreUsuario by remember { mutableStateOf("Usuario") }
@@ -141,7 +144,14 @@ fun AppNavigation(
                     }
                 )
             }
-            composable("apuntes") { Apuntes() }
+            composable("apuntes") {
+                Apuntes(
+                    apuntes = apuntes,
+                    onGuardarApunte = { materia, titulo, contenido ->
+                        apunteViewModel.agregarApunte(materia, titulo, contenido)
+                    }
+                )
+            }
             composable("material") { Material() }
         }
     }
