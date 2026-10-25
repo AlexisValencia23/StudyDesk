@@ -23,6 +23,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.studydesk.viewmodel.UsuarioViewModel
 
 // Pestañas de la barra inferior (solo las 4 pantallas principales)
 private data class Pestana(val ruta: String, val titulo: String, val icono: ImageVector)
@@ -35,7 +36,7 @@ private val pestanas = listOf(
 )
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(usuarioViewModel: UsuarioViewModel ){
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
