@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,16 +40,15 @@ import com.example.studydesk.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
-
-
 @Composable
-fun Login(onLoginSuccess: (String) -> Unit) {
+fun Login(
+    onLoginSuccess: (String) -> Unit,
+    onRegistro: () -> Unit = {}
+) {
 
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var modal by remember { mutableStateOf(false) }
 
     var cargando by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -59,10 +57,6 @@ fun Login(onLoginSuccess: (String) -> Unit) {
     val correoError = mostrarError && correo.isBlank()
     val passwordError = mostrarError && password.isBlank()
     val nombreError = mostrarError && nombre.isBlank()
-
-
-    fun abrirModal() { modal = true }
-    fun cerrarModal() { modal = false }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -225,7 +219,7 @@ fun Login(onLoginSuccess: (String) -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
-            onClick = { modal = true },
+            onClick = onRegistro,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -239,17 +233,6 @@ fun Login(onLoginSuccess: (String) -> Unit) {
                 text = "Registrarme",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
-            )
-        }
-
-        if (modal) {
-            AlertDialog(
-                onDismissRequest = { },
-                title = { Text("Confirmación") },
-                text = { Text("Formulario enviado correctamente") },
-                confirmButton = {
-                    Button(onClick = { cerrarModal() }) { Text("OK") }
-                }
             )
         }
     }
