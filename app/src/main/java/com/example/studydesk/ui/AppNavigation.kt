@@ -133,7 +133,14 @@ fun AppNavigation(
                 )
             }
 
-            composable("entregas") { Entregas(entregas = entregas) }
+            composable("entregas") {
+                Entregas(
+                    entregas = entregas,
+                    onGuardarEntrega = { materia, titulo, fecha ->
+                        entregaViewModel.agregarEntrega(materia, titulo, fecha)
+                    }
+                )
+            }
             composable("apuntes") { Apuntes() }
             composable("material") { Material() }
         }

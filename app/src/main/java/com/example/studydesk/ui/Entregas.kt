@@ -12,14 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,9 +47,11 @@ private val Lavanda = Color(0xFFE8EAF6)
 @Composable
 fun Entregas(
     entregas: List<Entrega>,
-    onAgregarEntrega: () -> Unit = {},
+    onGuardarEntrega: (materia: String, titulo: String, fecha: String) -> Unit = { _, _, _ -> },
     onCalendario: () -> Unit = {}
 ) {
+    var mostrarFormulario by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -97,7 +106,7 @@ fun Entregas(
             }
 
             Button(
-                onClick = onAgregarEntrega,
+                onClick = { mostrarFormulario = true },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Indigo),
                 modifier = Modifier
@@ -106,6 +115,16 @@ fun Entregas(
             ) {
                 Text(text = "+ Agregar entrega", fontWeight = FontWeight.Bold)
             }
+        }
+
+        if (mostrarFormulario) {
+            FormularioEntrega(
+                onGuardar = { materia, titulo, fecha ->
+                    onGuardarEntrega(materia, titulo, fecha)
+                    mostrarFormulario = false
+                },
+                onCancelar = { mostrarFormulario = false }
+            )
         }
     }
 }
@@ -145,6 +164,82 @@ private fun TarjetaEntrega(entrega: Entrega) {
             }
         }
     }
+}
+
+// Ventana para crear una entrega nueva; no deja guardar si falta algún campo
+@Composable
+private fun FormularioEntrega(
+    onGuardar: (materia: String, titulo: String, fecha: String) -> Unit,
+    onCancelar: () -> Unit
+) {
+    var materia by remember { mutableStateOf("") }
+    var titulo by remember { mutableStateOf("") }
+    var fecha by remember { mutableStateOf("") }
+    var mostrarErrores by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = { Text("Nueva entrega") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CampoEntrega(
+                    valor = materia,
+                    onCambio = { materia = it },
+                    etiqueta = "Materia",
+                    mensajeError = if (mostrarErrores && materia.isBlank()) "La materia es obligatoria" else null
+                )
+                CampoEntrega(
+                    valor = titulo,
+                    onCambio = { titulo = it },
+                    etiqueta = "Nombre del trabajo",
+                    mensajeError = if (mostrarErrores && titulo.isBlank()) "El nombre es obligatorio" else null
+                )
+                CampoEntrega(
+                    valor = fecha,
+                    onCambio = { fecha = it },
+                    etiqueta = "Fecha de entrega (ej: 12 oct)",
+                    mensajeError = if (mostrarErrores && fecha.isBlank()) "La fecha es obligatoria" else null
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (materia.isBlank() || titulo.isBlank() || fecha.isBlank()) {
+                        mostrarErrores = true
+                    } else {
+                        onGuardar(materia, titulo, fecha)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Indigo)
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text("Cancelar", color = Indigo)
+            }
+        }
+    )
+}
+
+@Composable
+private fun CampoEntrega(
+    valor: String,
+    onCambio: (String) -> Unit,
+    etiqueta: String,
+    mensajeError: String?
+) {
+    OutlinedTextField(
+        value = valor,
+        onValueChange = onCambio,
+        label = { Text(etiqueta) },
+        isError = mensajeError != null,
+        supportingText = { if (mensajeError != null) Text(mensajeError) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Preview(showBackground = true)
