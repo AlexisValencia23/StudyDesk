@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -50,12 +52,13 @@ private const val TODAS = "Todas"
 fun Apuntes(
     apuntes: List<Apunte>,
     onGuardarApunte: (materia: String, titulo: String, contenido: String) -> Unit = { _, _, _ -> },
-    onVer: (Apunte) -> Unit = {},
-    onEditar: (Apunte) -> Unit = {},
+    onEditarApunte: (apunte: Apunte, titulo: String, contenido: String) -> Unit = { _, _, _ -> },
     onCompartir: (Apunte) -> Unit = {}
 ) {
     var filtro by remember { mutableStateOf(TODAS) }
     var mostrarFormulario by remember { mutableStateOf(false) }
+    var apunteParaVer by remember { mutableStateOf<Apunte?>(null) }
+    var apunteParaEditar by remember { mutableStateOf<Apunte?>(null) }
 
     val materias = listOf(TODAS) + apuntes.map { it.materia }.distinct()
     val visibles = if (filtro == TODAS) apuntes else apuntes.filter { it.materia == filtro }
@@ -105,7 +108,12 @@ fun Apuntes(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(visibles) { apunte ->
-                    TarjetaApunte(apunte, onVer, onEditar, onCompartir)
+                    TarjetaApunte(
+                        apunte = apunte,
+                        onVer = { apunteParaVer = it },
+                        onEditar = { apunteParaEditar = it },
+                        onCompartir = onCompartir
+                    )
                 }
             }
         }
@@ -124,12 +132,28 @@ fun Apuntes(
 
         if (mostrarFormulario) {
             FormularioApunte(
+                apunteInicial = null,
                 onGuardar = { materia, titulo, contenido ->
                     onGuardarApunte(materia, titulo, contenido)
                     mostrarFormulario = false
                 },
                 onCancelar = { mostrarFormulario = false }
             )
+        }
+
+        apunteParaEditar?.let { apunte ->
+            FormularioApunte(
+                apunteInicial = apunte,
+                onGuardar = { _, titulo, contenido ->
+                    onEditarApunte(apunte, titulo, contenido)
+                    apunteParaEditar = null
+                },
+                onCancelar = { apunteParaEditar = null }
+            )
+        }
+
+        apunteParaVer?.let { apunte ->
+            DialogoVerApunte(apunte = apunte, onCerrar = { apunteParaVer = null })
         }
     }
 }
@@ -182,28 +206,35 @@ private fun BotonAccion(texto: String, modifier: Modifier, onClick: () -> Unit) 
     }
 }
 
-// Ventana para crear un apunte nuevo; no deja guardar si falta algún campo
+// Ventana para crear un apunte nuevo o, si recibe uno, editar su título y contenido.
+// No deja guardar si falta algún campo.
 @Composable
 private fun FormularioApunte(
+    apunteInicial: Apunte?,
     onGuardar: (materia: String, titulo: String, contenido: String) -> Unit,
     onCancelar: () -> Unit
 ) {
-    var materia by remember { mutableStateOf("") }
-    var titulo by remember { mutableStateOf("") }
-    var contenido by remember { mutableStateOf("") }
+    val editando = apunteInicial != null
+
+    var materia by remember { mutableStateOf(apunteInicial?.materia ?: "") }
+    var titulo by remember { mutableStateOf(apunteInicial?.titulo ?: "") }
+    var contenido by remember { mutableStateOf(apunteInicial?.contenido ?: "") }
     var mostrarErrores by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text("Nuevo apunte") },
+        title = { Text(if (editando) "Editar apunte" else "Nuevo apunte") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CampoApunte(
-                    valor = materia,
-                    onCambio = { materia = it },
-                    etiqueta = "Materia",
-                    mensajeError = if (mostrarErrores && materia.isBlank()) "La materia es obligatoria" else null
-                )
+                // La materia solo se elige al crear el apunte
+                if (!editando) {
+                    CampoApunte(
+                        valor = materia,
+                        onCambio = { materia = it },
+                        etiqueta = "Materia",
+                        mensajeError = if (mostrarErrores && materia.isBlank()) "La materia es obligatoria" else null
+                    )
+                }
                 CampoApunte(
                     valor = titulo,
                     onCambio = { titulo = it },
@@ -230,12 +261,35 @@ private fun FormularioApunte(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Indigo)
             ) {
-                Text("Guardar")
+                Text(if (editando) "Guardar cambios" else "Guardar")
             }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) {
                 Text("Cancelar", color = Indigo)
+            }
+        }
+    )
+}
+
+// Ventana para leer un apunte completo
+@Composable
+private fun DialogoVerApunte(apunte: Apunte, onCerrar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCerrar,
+        title = { Text(apunte.titulo) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = "${apunte.materia} · ${apunte.fecha}", fontSize = 12.sp, color = TextoSuave)
+                Text(text = apunte.contenido, fontSize = 15.sp, color = TextoOscuro)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onCerrar) {
+                Text("Cerrar", color = Indigo)
             }
         }
     )

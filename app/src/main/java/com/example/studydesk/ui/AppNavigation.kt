@@ -149,6 +149,9 @@ fun AppNavigation(
                     apuntes = apuntes,
                     onGuardarApunte = { materia, titulo, contenido ->
                         apunteViewModel.agregarApunte(materia, titulo, contenido)
+                    },
+                    onEditarApunte = { apunte, titulo, contenido ->
+                        apunteViewModel.editarApunte(apunte, titulo, contenido)
                     }
                 )
             }
