@@ -19,7 +19,19 @@ fun AppNavigation() {
                     navController.navigate("inicio/$nombreIngresado") {
                         popUpTo("login") { inclusive = true }
                     }
-                }
+                },
+                onRegistro = { navController.navigate("registro") }
+            )
+        }
+
+        composable("registro") {
+            Registro(
+                onCrearCuenta = { nombre, _, _, _ ->
+                    navController.navigate("inicio/$nombre") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onIniciarSesion = { navController.popBackStack() }
             )
         }
 
