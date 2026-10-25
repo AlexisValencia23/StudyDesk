@@ -12,6 +12,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.studydesk.notification.Notificaciones
+import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
 // Pestañas de la barra inferior (solo las 4 pantallas principales)
@@ -38,11 +40,15 @@ private val pestanas = listOf(
 )
 
 @Composable
-fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
+fun AppNavigation(
+    usuarioViewModel: UsuarioViewModel,
+    entregaViewModel: EntregaViewModel
+) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
     val context = LocalContext.current
+    val entregas by entregaViewModel.entregas.collectAsState()
 
     // Nombre del usuario que inició sesión
     var nombreUsuario by remember { mutableStateOf("Usuario") }
@@ -127,7 +133,7 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
                 )
             }
 
-            composable("entregas") { Entregas() }
+            composable("entregas") { Entregas(entregas = entregas) }
             composable("apuntes") { Apuntes() }
             composable("material") { Material() }
         }

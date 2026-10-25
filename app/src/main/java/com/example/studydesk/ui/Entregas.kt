@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.studydesk.model.Entrega
 import com.example.studydesk.ui.theme.StudyDeskTheme
 
 private val Indigo = Color(0xFF3949AB)
@@ -36,23 +37,9 @@ private val TextoSuave = Color(0xFF4A5073)
 private val Borde = Color(0xFFE3E6F0)
 private val Lavanda = Color(0xFFE8EAF6)
 
-// Datos de ejemplo. Más adelante esto vendrá de la base de datos.
-data class EntregaItem(
-    val materia: String,
-    val titulo: String,
-    val fecha: String
-)
-
-private val entregasEjemplo = listOf(
-    EntregaItem("Derecho Civil", "Ensayo: responsabilidad contractual", "12 oct"),
-    EntregaItem("Derecho Penal", "Análisis de jurisprudencia", "15 oct"),
-    EntregaItem("Derecho Constitucional", "Resumen: control de constitucionalidad", "20 oct"),
-    EntregaItem("Derecho Laboral", "Caso: término de contrato", "28 oct")
-)
-
 @Composable
 fun Entregas(
-    entregas: List<EntregaItem> = entregasEjemplo,
+    entregas: List<Entrega>,
     onAgregarEntrega: () -> Unit = {},
     onCalendario: () -> Unit = {}
 ) {
@@ -71,14 +58,25 @@ fun Entregas(
             )
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(entregas) { entrega ->
-                TarjetaEntrega(entrega)
+        if (entregas.isEmpty()) {
+            Text(
+                text = "Aún no tienes entregas. Agrega la primera con el botón de abajo.",
+                fontSize = 14.sp,
+                color = TextoSuave,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 20.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(entregas) { entrega ->
+                    TarjetaEntrega(entrega)
+                }
             }
         }
 
@@ -113,7 +111,7 @@ fun Entregas(
 }
 
 @Composable
-private fun TarjetaEntrega(entrega: EntregaItem) {
+private fun TarjetaEntrega(entrega: Entrega) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -153,6 +151,11 @@ private fun TarjetaEntrega(entrega: EntregaItem) {
 @Composable
 fun EntregasPreview() {
     StudyDeskTheme {
-        Entregas()
+        Entregas(
+            entregas = listOf(
+                Entrega(1, "Derecho Civil", "Ensayo: responsabilidad contractual", "12 oct"),
+                Entrega(2, "Derecho Penal", "Análisis de jurisprudencia", "15 oct")
+            )
+        )
     }
 }
