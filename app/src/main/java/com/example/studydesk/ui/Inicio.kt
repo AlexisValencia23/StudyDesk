@@ -22,6 +22,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,7 +53,8 @@ private val Lavanda = Color(0xFFE8EAF6)
 @Composable
 fun Inicio(
     nombre: String,
-    onIrAMaterial: () -> Unit = {}
+    onIrAMaterial: () -> Unit = {},
+    onSimularAviso: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -101,6 +103,24 @@ fun Inicio(
                     .height(48.dp)
             ) {
                 Text(text = "Ir al material de estudio", fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Tarjeta(retrasoMs = 450) {
+            Titulo("Avisos de cambios")
+            Text(
+                text = "Recibe una notificación cuando se modifique una norma. Aviso simulado para la demostración.",
+                fontSize = 12.sp,
+                color = TextoSuave
+            )
+            OutlinedButton(
+                onClick = onSimularAviso,
+                border = BorderStroke(1.dp, Indigo),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text(text = "Simular aviso de cambio", color = Indigo, fontWeight = FontWeight.Bold)
             }
         }
     }

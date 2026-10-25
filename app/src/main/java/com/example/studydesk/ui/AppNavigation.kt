@@ -18,11 +18,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.studydesk.notification.Notificaciones
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
 // Pestañas de la barra inferior (solo las 4 pantallas principales)
@@ -40,6 +42,7 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
+    val context = LocalContext.current
 
     // Nombre del usuario que inició sesión
     var nombreUsuario by remember { mutableStateOf("Usuario") }
@@ -113,7 +116,14 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
             composable("inicio") {
                 Inicio(
                     nombre = nombreUsuario,
-                    onIrAMaterial = { irAPestana(navController, "material") }
+                    onIrAMaterial = { irAPestana(navController, "material") },
+                    onSimularAviso = {
+                        Notificaciones.mostrarAvisoCambio(
+                            context,
+                            "Cambio normativo",
+                            "Se modificó el Código del Trabajo (aviso de ejemplo)"
+                        )
+                    }
                 )
             }
 
