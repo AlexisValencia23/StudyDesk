@@ -39,8 +39,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.studydesk.model.Apunte
+import com.example.studydesk.model.Entrega
 import com.example.studydesk.ui.theme.StudyDeskTheme
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 private val Indigo = Color(0xFF3949AB)
@@ -53,6 +58,8 @@ private val Lavanda = Color(0xFFE8EAF6)
 @Composable
 fun Inicio(
     nombre: String,
+    entregas: List<Entrega>,
+    apuntes: List<Apunte>,
     onIrAMaterial: () -> Unit = {},
     onSimularAviso: () -> Unit = {}
 ) {
@@ -65,7 +72,7 @@ fun Inicio(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Column {
-            Text(text = "Jueves 15 de octubre", fontSize = 12.sp, color = TextoSuave)
+            Text(text = fechaDeHoy(), fontSize = 12.sp, color = TextoSuave)
             Text(
                 text = "Hola, $nombre",
                 fontSize = 26.sp,
@@ -75,17 +82,27 @@ fun Inicio(
         }
 
         Tarjeta(retrasoMs = 0) {
-            Titulo("Próximas entregas")
-            FilaItem("Ensayo: responsabilidad contractual", "Derecho Civil", "12 oct")
-            HorizontalDivider(color = Borde)
-            FilaItem("Análisis de jurisprudencia", "Derecho Penal", "15 oct")
+            Titulo("Últimas entregas")
+            if (entregas.isEmpty()) {
+                Text(text = "Aún no tienes entregas.", fontSize = 12.sp, color = TextoSuave)
+            } else {
+                entregas.take(2).forEachIndexed { indice, entrega ->
+                    if (indice > 0) HorizontalDivider(color = Borde)
+                    FilaItem(entrega.titulo, entrega.materia, entrega.fecha)
+                }
+            }
         }
 
         Tarjeta(retrasoMs = 150) {
             Titulo("Apuntes recientes")
-            FilaItem("Garantías constitucionales", "Derecho Constitucional", "Hoy")
-            HorizontalDivider(color = Borde)
-            FilaItem("Despido: causales", "Derecho Laboral", "Ayer")
+            if (apuntes.isEmpty()) {
+                Text(text = "Aún no tienes apuntes.", fontSize = 12.sp, color = TextoSuave)
+            } else {
+                apuntes.take(2).forEachIndexed { indice, apunte ->
+                    if (indice > 0) HorizontalDivider(color = Borde)
+                    FilaItem(apunte.titulo, apunte.materia, apunte.fecha)
+                }
+            }
         }
 
         Tarjeta(fondo = Lavanda, borde = Color(0xFFC5CAE9), retrasoMs = 300) {
@@ -124,6 +141,12 @@ fun Inicio(
             }
         }
     }
+}
+
+// Fecha de hoy con el formato "Domingo 25 de octubre"
+private fun fechaDeHoy(): String {
+    val formato = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es", "CL"))
+    return formato.format(Date()).replaceFirstChar { it.uppercase() }
 }
 
 // Tarjeta que aparece con una animación: sube desde abajo mientras se hace visible.
@@ -202,6 +225,6 @@ private fun FilaItem(titulo: String, materia: String, fecha: String) {
 @Composable
 fun InicioPreview() {
     StudyDeskTheme {
-        Inicio(nombre = "Estudiante")
+        Inicio(nombre = "Estudiante", entregas = emptyList(), apuntes = emptyList())
     }
 }

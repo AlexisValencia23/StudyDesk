@@ -128,6 +128,8 @@ fun AppNavigation(
             composable("inicio") {
                 Inicio(
                     nombre = nombreUsuario,
+                    entregas = entregas,
+                    apuntes = apuntes,
                     onIrAMaterial = { irAPestana(navController, "material") },
                     onSimularAviso = {
                         Notificaciones.mostrarAvisoCambio(
