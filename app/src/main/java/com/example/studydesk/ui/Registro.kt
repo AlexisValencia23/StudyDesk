@@ -39,6 +39,7 @@ private val TextoSuave = Color(0xFF4A5073)
 
 @Composable
 fun Registro(
+    mensajeError: String? = null,
     onCrearCuenta: (nombre: String, correo: String, contrasena: String, perfil: String) -> Unit = { _, _, _, _ -> },
     onIniciarSesion: () -> Unit = {}
 ) {
@@ -131,6 +132,11 @@ fun Registro(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        if (mensajeError != null) {
+            Text(text = mensajeError, color = Color.Red, fontSize = 13.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         Button(
             onClick = { onCrearCuenta(nombre, correo, contrasena, perfil) },

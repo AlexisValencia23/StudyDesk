@@ -36,12 +36,12 @@ private val pestanas = listOf(
 )
 
 @Composable
-fun AppNavigation(usuarioViewModel: UsuarioViewModel ){
+fun AppNavigation(usuarioViewModel: UsuarioViewModel) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
 
-    // Nombre del usuario que inició sesión (más adelante saldrá de la base de datos)
+    // Nombre del usuario que inició sesión
     var nombreUsuario by remember { mutableStateOf("Usuario") }
 
     Scaffold(
@@ -74,19 +74,28 @@ fun AppNavigation(usuarioViewModel: UsuarioViewModel ){
                             popUpTo("login") { inclusive = true }
                         }
                     },
-                    onRegistro = { navController.navigate("registro") }
+                    onRegistro = {
+                        usuarioViewModel.limpiarError()
+                        navController.navigate("registro")
+                    }
                 )
             }
 
             composable("registro") {
                 Registro(
-                    onCrearCuenta = { nombre, _, _, _ ->
-                        nombreUsuario = nombre
-                        navController.navigate("inicio") {
-                            popUpTo("login") { inclusive = true }
+                    mensajeError = usuarioViewModel.mensajeError,
+                    onCrearCuenta = { nombre, correo, contrasena, perfil ->
+                        usuarioViewModel.registrar(nombre, correo, contrasena, perfil) { nombreGuardado ->
+                            nombreUsuario = nombreGuardado
+                            navController.navigate("inicio") {
+                                popUpTo("login") { inclusive = true }
+                            }
                         }
                     },
-                    onIniciarSesion = { navController.popBackStack() }
+                    onIniciarSesion = {
+                        usuarioViewModel.limpiarError()
+                        navController.popBackStack()
+                    }
                 )
             }
 
