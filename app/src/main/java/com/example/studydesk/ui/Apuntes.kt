@@ -69,7 +69,11 @@ fun Apuntes(
             .background(Fondo)
     ) {
         Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 12.dp)) {
-            Text(text = "${apuntes.size} apuntes guardados", fontSize = 12.sp, color = TextoSuave)
+            Text(
+                text = if (apuntes.size == 1) "1 apunte guardado" else "${apuntes.size} apuntes guardados",
+                fontSize = 12.sp,
+                color = TextoSuave
+            )
             Text(
                 text = "Apuntes",
                 fontSize = 26.sp,

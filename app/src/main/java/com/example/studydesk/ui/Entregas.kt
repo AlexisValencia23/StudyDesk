@@ -70,7 +70,11 @@ fun Entregas(
             .background(Fondo)
     ) {
         Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 12.dp)) {
-            Text(text = "${entregas.size} pendientes", fontSize = 12.sp, color = TextoSuave)
+            Text(
+                text = if (entregas.size == 1) "1 pendiente" else "${entregas.size} pendientes",
+                fontSize = 12.sp,
+                color = TextoSuave
+            )
             Text(
                 text = "Entregas",
                 fontSize = 26.sp,
