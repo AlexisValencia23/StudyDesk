@@ -58,7 +58,7 @@ fun Login(
 
         Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "Logo de StudyFlow",
+            contentDescription = "Logo de StudyDesk",
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(96.dp)

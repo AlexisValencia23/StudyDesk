@@ -61,7 +61,7 @@ fun Registro(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "StudyFlow",
+            text = "StudyDesk",
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = Indigo
@@ -167,7 +167,7 @@ fun Registro(
             AlertDialog(
                 onDismissRequest = { },
                 title = { Text("Cuenta creada") },
-                text = { Text("Tu cuenta se creó correctamente. ¡Bienvenido/a a StudyFlow!") },
+                text = { Text("Tu cuenta se creó correctamente. ¡Bienvenido/a a StudyDesk!") },
                 confirmButton = {
                     Button(
                         onClick = onAceptarCuentaCreada,
