@@ -7,7 +7,7 @@ Proyecto de la asignatura **Desarrollo de Aplicaciones Móviles (DSY1105)**, Duo
 ## Integrantes
 
 - Paolo Muñoz
-- Benjamin
+- Benjamín Farias
 - Alexis Valencia
 
 ## Qué puede hacer la app
