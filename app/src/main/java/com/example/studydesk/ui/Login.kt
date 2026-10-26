@@ -17,7 +17,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +57,7 @@ fun Login(
 
         Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "Logo de StudyDesk",
+            contentDescription = "Logo de StudyFlow",
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(96.dp)
@@ -151,20 +150,6 @@ fun Login(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        TextButton(
-            onClick = { },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Text(
-                text = "¿Olvidaste tu contraseña?",
-                color = Color(0xFF3C4EB4),
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "¿Aún no tienes cuenta?",
