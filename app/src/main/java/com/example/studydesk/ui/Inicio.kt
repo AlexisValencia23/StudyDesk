@@ -145,7 +145,7 @@ fun Inicio(
 
 // Fecha de hoy con el formato "Domingo 25 de octubre"
 private fun fechaDeHoy(): String {
-    val formato = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es", "CL"))
+    val formato = SimpleDateFormat("EEEE d 'de' MMMM", Locale.forLanguageTag("es-CL"))
     return formato.format(Date()).replaceFirstChar { it.uppercase() }
 }
 
