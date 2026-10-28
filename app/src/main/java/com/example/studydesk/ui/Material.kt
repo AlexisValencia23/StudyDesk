@@ -126,6 +126,12 @@ private fun TarjetaMaterial(material: MaterialEstudio, onAbrirMaterial: (Materia
                 color = TextoOscuro
             )
             Text(text = material.descripcion, fontSize = 13.sp, color = TextoSuave)
+            Text(
+                text = "Última actualización: ${material.fechaActualizacion}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Indigo
+            )
             Button(
                 onClick = { onAbrirMaterial(material) },
                 shape = RoundedCornerShape(12.dp),
