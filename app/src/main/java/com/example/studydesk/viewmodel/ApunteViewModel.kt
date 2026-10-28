@@ -4,13 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studydesk.model.Apunte
 import com.example.studydesk.repository.ApunteRepository
+import com.example.studydesk.util.FechaUtil
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class ApunteViewModel(private val repository: ApunteRepository) : ViewModel() {
 
@@ -25,7 +23,7 @@ class ApunteViewModel(private val repository: ApunteRepository) : ViewModel() {
                     materia = materia.trim(),
                     titulo = titulo.trim(),
                     contenido = contenido.trim(),
-                    fecha = fechaDeHoy()
+                    fecha = FechaUtil.hoy()
                 )
             )
         }
@@ -37,14 +35,9 @@ class ApunteViewModel(private val repository: ApunteRepository) : ViewModel() {
                 apunte.copy(
                     titulo = nuevoTitulo.trim(),
                     contenido = nuevoContenido.trim(),
-                    fecha = fechaDeHoy()
+                    fecha = FechaUtil.hoy()
                 )
             )
         }
-    }
-
-    // La fecha se pone sola, así el usuario no tiene que escribirla (ej: "27 oct")
-    private fun fechaDeHoy(): String {
-        return SimpleDateFormat("d MMM", Locale("es", "CL")).format(Date())
     }
 }
