@@ -25,6 +25,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,7 +62,8 @@ fun Inicio(
     entregas: List<Entrega>,
     apuntes: List<Apunte>,
     onIrAMaterial: () -> Unit = {},
-    onSimularAviso: () -> Unit = {}
+    onSimularAviso: () -> Unit = {},
+    onCerrarSesion: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -71,14 +73,23 @@ fun Inicio(
             .padding(horizontal = 20.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Column {
-            Text(text = fechaDeHoy(), fontSize = 12.sp, color = TextoSuave)
-            Text(
-                text = "Hola, $nombre",
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextoOscuro
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = fechaDeHoy(), fontSize = 12.sp, color = TextoSuave)
+                Text(
+                    text = "Hola, $nombre",
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextoOscuro
+                )
+            }
+            TextButton(onClick = onCerrarSesion) {
+                Text(text = "Cerrar sesión", color = Indigo, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
         }
 
         Tarjeta(retrasoMs = 0) {
@@ -145,7 +156,7 @@ fun Inicio(
 
 // Fecha de hoy con el formato "Domingo 25 de octubre"
 private fun fechaDeHoy(): String {
-    val formato = SimpleDateFormat("EEEE d 'de' MMMM", Locale.forLanguageTag("es-CL"))
+    val formato = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es", "CL"))
     return formato.format(Date()).replaceFirstChar { it.uppercase() }
 }
 

@@ -140,6 +140,12 @@ fun AppNavigation(
                             "Cambio normativo",
                             "Se modificó el Código del Trabajo (aviso de ejemplo)"
                         )
+                    },
+                    onCerrarSesion = {
+                        usuarioViewModel.limpiarError()
+                        navController.navigate("login") {
+                            popUpTo("inicio") { inclusive = true }
+                        }
                     }
                 )
             }
