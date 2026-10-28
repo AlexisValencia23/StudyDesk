@@ -57,7 +57,10 @@ fun Material(
     materiales: List<MaterialEstudio> = materialesEstudio,
     onAbrirMaterial: (MaterialEstudio) -> Unit = {},
     obtenerComentarios: (archivoPdf: String) -> Flow<List<Comentario>> = { emptyFlow() },
-    onAgregarComentario: (archivoPdf: String, texto: String) -> Unit = { _, _ -> }
+    autor: String = "",
+    onAgregarComentario: (archivoPdf: String, texto: String) -> Unit = { _, _ -> },
+    onEditarComentario: (comentario: Comentario, texto: String) -> Unit = { _, _ -> },
+    onEliminarComentario: (comentario: Comentario) -> Unit = {}
 ) {
     var busqueda by remember { mutableStateOf("") }
     var materialComentado by remember { mutableStateOf<MaterialEstudio?>(null) }
@@ -121,7 +124,10 @@ fun Material(
             DialogoComentarios(
                 material = material,
                 obtenerComentarios = obtenerComentarios,
+                autor = autor,
                 onPublicar = { texto -> onAgregarComentario(material.archivoPdf, texto) },
+                onEditar = onEditarComentario,
+                onEliminar = onEliminarComentario,
                 onCerrar = { materialComentado = null }
             )
         }
@@ -189,19 +195,27 @@ private fun TarjetaMaterial(
     }
 }
 
-// Ventana con los comentarios de un material y un campo para escribir uno nuevo
+// Ventana con los comentarios de un material. Permite escribir uno nuevo y,
+// solo en los comentarios propios, editarlos o eliminarlos.
 @Composable
 private fun DialogoComentarios(
     material: MaterialEstudio,
     obtenerComentarios: (archivoPdf: String) -> Flow<List<Comentario>>,
+    autor: String,
     onPublicar: (texto: String) -> Unit,
+    onEditar: (comentario: Comentario, texto: String) -> Unit,
+    onEliminar: (comentario: Comentario) -> Unit,
     onCerrar: () -> Unit
 ) {
     val comentarios by remember(material.archivoPdf) { obtenerComentarios(material.archivoPdf) }
         .collectAsState(initial = emptyList())
 
-    var nuevoTexto by remember { mutableStateOf("") }
+    var texto by remember { mutableStateOf("") }
     var mostrarError by remember { mutableStateOf(false) }
+    var comentarioEnEdicion by remember { mutableStateOf<Comentario?>(null) }
+    var comentarioAEliminar by remember { mutableStateOf<Comentario?>(null) }
+
+    val editando = comentarioEnEdicion != null
 
     AlertDialog(
         onDismissRequest = onCerrar,
@@ -216,18 +230,27 @@ private fun DialogoComentarios(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(comentarios) { comentario ->
-                            FilaComentario(comentario)
+                            FilaComentario(
+                                comentario = comentario,
+                                esPropio = comentario.autor == autor,
+                                onEditar = {
+                                    comentarioEnEdicion = comentario
+                                    texto = comentario.texto
+                                    mostrarError = false
+                                },
+                                onEliminar = { comentarioAEliminar = comentario }
+                            )
                         }
                     }
                 }
 
                 OutlinedTextField(
-                    value = nuevoTexto,
-                    onValueChange = { nuevoTexto = it },
-                    label = { Text("Escribe un comentario") },
-                    isError = mostrarError && nuevoTexto.isBlank(),
+                    value = texto,
+                    onValueChange = { texto = it },
+                    label = { Text(if (editando) "Editando tu comentario" else "Escribe un comentario") },
+                    isError = mostrarError && texto.isBlank(),
                     supportingText = {
-                        if (mostrarError && nuevoTexto.isBlank()) Text("Escribe algo antes de publicar")
+                        if (mostrarError && texto.isBlank()) Text("Escribe algo antes de guardar")
                     },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
@@ -237,29 +260,73 @@ private fun DialogoComentarios(
         confirmButton = {
             Button(
                 onClick = {
-                    if (nuevoTexto.isBlank()) {
+                    if (texto.isBlank()) {
                         mostrarError = true
                     } else {
-                        onPublicar(nuevoTexto)
-                        nuevoTexto = ""
+                        comentarioEnEdicion?.let { onEditar(it, texto) } ?: onPublicar(texto)
+                        comentarioEnEdicion = null
+                        texto = ""
                         mostrarError = false
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Indigo)
             ) {
-                Text("Publicar")
+                Text(if (editando) "Guardar cambios" else "Publicar")
             }
         },
         dismissButton = {
-            TextButton(onClick = onCerrar) {
-                Text("Cerrar", color = Indigo)
+            TextButton(
+                onClick = {
+                    if (editando) {
+                        comentarioEnEdicion = null
+                        texto = ""
+                        mostrarError = false
+                    } else {
+                        onCerrar()
+                    }
+                }
+            ) {
+                Text(if (editando) "Cancelar edición" else "Cerrar", color = Indigo)
             }
         }
     )
+
+    comentarioAEliminar?.let { comentario ->
+        AlertDialog(
+            onDismissRequest = { comentarioAEliminar = null },
+            title = { Text("Eliminar comentario") },
+            text = { Text("¿Seguro que quieres eliminar este comentario?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onEliminar(comentario)
+                        if (comentarioEnEdicion == comentario) {
+                            comentarioEnEdicion = null
+                            texto = ""
+                        }
+                        comentarioAEliminar = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E))
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { comentarioAEliminar = null }) {
+                    Text("Cancelar", color = Indigo)
+                }
+            }
+        )
+    }
 }
 
 @Composable
-private fun FilaComentario(comentario: Comentario) {
+private fun FilaComentario(
+    comentario: Comentario,
+    esPropio: Boolean,
+    onEditar: () -> Unit,
+    onEliminar: () -> Unit
+) {
     Column {
         Text(
             text = "${comentario.autor} · ${comentario.fecha}",
@@ -268,6 +335,18 @@ private fun FilaComentario(comentario: Comentario) {
             color = TextoSuave
         )
         Text(text = comentario.texto, fontSize = 14.sp, color = TextoOscuro)
+
+        // Solo el autor puede editar o eliminar su comentario
+        if (esPropio) {
+            Row {
+                TextButton(onClick = onEditar) {
+                    Text("Editar", color = Indigo, fontSize = 13.sp)
+                }
+                TextButton(onClick = onEliminar) {
+                    Text("Eliminar", color = Color(0xFFB3261E), fontSize = 13.sp)
+                }
+            }
+        }
     }
 }
 

@@ -170,9 +170,14 @@ fun AppNavigation(
                         navController.navigate("visor/${material.archivoPdf}")
                     },
                     obtenerComentarios = comentarioViewModel::comentarios,
+                    autor = nombreUsuario,
                     onAgregarComentario = { archivoPdf, texto ->
                         comentarioViewModel.agregarComentario(archivoPdf, nombreUsuario, texto)
-                    }
+                    },
+                    onEditarComentario = { comentario, texto ->
+                        comentarioViewModel.editarComentario(comentario, texto)
+                    },
+                    onEliminarComentario = comentarioViewModel::eliminarComentario
                 )
             }
 
