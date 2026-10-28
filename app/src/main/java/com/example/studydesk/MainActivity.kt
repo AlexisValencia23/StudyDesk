@@ -11,11 +11,13 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.studydesk.model.AppDatabase
 import com.example.studydesk.notification.Notificaciones
 import com.example.studydesk.repository.ApunteRepository
+import com.example.studydesk.repository.ComentarioRepository
 import com.example.studydesk.repository.EntregaRepository
 import com.example.studydesk.repository.UsuarioRepository
 import com.example.studydesk.ui.AppNavigation
 import com.example.studydesk.ui.theme.StudyDeskTheme
 import com.example.studydesk.viewmodel.ApunteViewModel
+import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
@@ -36,6 +38,9 @@ class MainActivity : ComponentActivity() {
     private val apunteRepository by lazy { ApunteRepository(db.apunteDao()) }
     private val apunteViewModel by lazy { ApunteViewModel(apunteRepository) }
 
+    private val comentarioRepository by lazy { ComentarioRepository(db.comentarioDao()) }
+    private val comentarioViewModel by lazy { ComentarioViewModel(comentarioRepository) }
+
     // Pide el permiso de notificaciones; si el usuario lo rechaza, simplemente no se muestran avisos
     private val solicitarPermisoNotificaciones =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -48,7 +53,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StudyDeskTheme {
-                AppNavigation(usuarioViewModel, entregaViewModel, apunteViewModel)
+                AppNavigation(usuarioViewModel, entregaViewModel, apunteViewModel, comentarioViewModel)
             }
         }
     }

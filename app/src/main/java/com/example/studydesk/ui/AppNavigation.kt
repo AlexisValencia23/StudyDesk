@@ -31,6 +31,7 @@ import com.example.studydesk.model.Apunte
 import com.example.studydesk.model.materialesEstudio
 import com.example.studydesk.notification.Notificaciones
 import com.example.studydesk.viewmodel.ApunteViewModel
+import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
@@ -48,7 +49,8 @@ private val pestanas = listOf(
 fun AppNavigation(
     usuarioViewModel: UsuarioViewModel,
     entregaViewModel: EntregaViewModel,
-    apunteViewModel: ApunteViewModel
+    apunteViewModel: ApunteViewModel,
+    comentarioViewModel: ComentarioViewModel
 ) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
@@ -166,6 +168,10 @@ fun AppNavigation(
                 Material(
                     onAbrirMaterial = { material ->
                         navController.navigate("visor/${material.archivoPdf}")
+                    },
+                    obtenerComentarios = comentarioViewModel::comentarios,
+                    onAgregarComentario = { archivoPdf, texto ->
+                        comentarioViewModel.agregarComentario(archivoPdf, nombreUsuario, texto)
                     }
                 )
             }
