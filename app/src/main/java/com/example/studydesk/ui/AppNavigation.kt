@@ -28,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.studydesk.model.Apunte
+import com.example.studydesk.model.materialesEstudio
 import com.example.studydesk.notification.Notificaciones
 import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
@@ -161,7 +162,23 @@ fun AppNavigation(
                     onCompartir = { apunte -> compartirApunte(context, apunte) }
                 )
             }
-            composable("material") { Material() }
+            composable("material") {
+                Material(
+                    onAbrirMaterial = { material ->
+                        navController.navigate("visor/${material.archivoPdf}")
+                    }
+                )
+            }
+
+            composable("visor/{archivo}") { entrada ->
+                val archivo = entrada.arguments?.getString("archivo") ?: ""
+                val titulo = materialesEstudio.firstOrNull { it.archivoPdf == archivo }?.titulo ?: "Material"
+                VisorPdf(
+                    titulo = titulo,
+                    nombreArchivo = archivo,
+                    onVolver = { navController.popBackStack() }
+                )
+            }
         }
     }
 }
