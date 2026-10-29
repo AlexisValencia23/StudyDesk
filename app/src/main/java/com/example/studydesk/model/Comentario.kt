@@ -5,9 +5,11 @@ import androidx.room3.PrimaryKey
 
 @Entity(tableName = "comentarios")
 data class Comentario(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val archivoPdf: String,
     val autor: String,
+    val autorId: Int,
     val texto: String,
     val fecha: String
 )
