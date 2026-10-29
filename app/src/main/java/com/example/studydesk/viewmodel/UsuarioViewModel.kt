@@ -1,3 +1,4 @@
+
 package com.example.studydesk.viewmodel
 
 import androidx.compose.runtime.getValue
@@ -17,15 +18,14 @@ class UsuarioViewModel(
     var mensajeError by mutableStateOf<String?>(null)
         private set
 
-    // Registrar usuario
+    // Registrar un usuario
     fun registrar(
         nombre: String,
         correo: String,
         contrasena: String,
         perfil: String,
-        onExito: (String) -> Unit
+        onExito: (Usuario) -> Unit
     ) {
-        // Validaciones antes de guardar en Room
         mensajeError = Validaciones.validarNombre(nombre)
             ?: Validaciones.validarCorreo(correo)
                     ?: Validaciones.validarContrasena(contrasena)
@@ -38,6 +38,7 @@ class UsuarioViewModel(
             if (repository.buscarPorCorreo(correoLimpio) != null) {
                 mensajeError = "Ya existe una cuenta con ese correo"
             } else {
+
                 repository.crearUsuario(
                     Usuario(
                         nombre = nombre.trim(),
@@ -47,8 +48,16 @@ class UsuarioViewModel(
                     )
                 )
 
-                mensajeError = null
-                onExito(nombre.trim())
+                // Recuperar el usuario con su ID generado por Room
+                val usuarioGuardado =
+                    repository.buscarPorCorreo(correoLimpio)
+
+                if (usuarioGuardado != null) {
+                    mensajeError = null
+                    onExito(usuarioGuardado)
+                } else {
+                    mensajeError = "No se pudo recuperar la cuenta creada"
+                }
             }
         }
     }
@@ -57,9 +66,8 @@ class UsuarioViewModel(
     fun iniciarSesion(
         correo: String,
         contrasena: String,
-        onExito: (String) -> Unit
+        onExito: (Usuario) -> Unit
     ) {
-        // Validar antes de consultar Room
         mensajeError = Validaciones.validarCorreo(correo)
             ?: Validaciones.validarContrasena(contrasena)
 
@@ -70,9 +78,14 @@ class UsuarioViewModel(
                 correo.trim().lowercase()
             )
 
-            if (usuario != null && usuario.contrasena == contrasena) {
+            if (
+                usuario != null &&
+                usuario.contrasena == contrasena
+            ) {
                 mensajeError = null
-                onExito(usuario.nombre)
+
+                // Enviar el usuario completo, incluido su ID
+                onExito(usuario)
             } else {
                 mensajeError = "Correo o contraseña incorrectos"
             }

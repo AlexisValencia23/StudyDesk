@@ -1,3 +1,4 @@
+
 package com.example.studydesk.ui
 
 import android.content.Context
@@ -14,6 +15,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,8 +38,11 @@ import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
-// Pestañas de la barra inferior (solo las 4 pantallas principales)
-private data class Pestana(val ruta: String, val titulo: String, val icono: ImageVector)
+private data class Pestana(
+    val ruta: String,
+    val titulo: String,
+    val icono: ImageVector
+)
 
 private val pestanas = listOf(
     Pestana("inicio", "Inicio", Icons.Default.Home),
@@ -54,53 +59,113 @@ fun AppNavigation(
     comentarioViewModel: ComentarioViewModel
 ) {
     val navController = rememberNavController()
+
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
+
     val context = LocalContext.current
     val sesion = remember { SesionManager(context) }
+
+    // Datos obtenidos desde Room
     val entregas by entregaViewModel.entregas.collectAsState()
     val apuntes by apunteViewModel.apuntes.collectAsState()
 
-    // Si hay una sesión guardada, la app abre directo en inicio (se calcula una sola vez)
-    val rutaInicial = remember { if (sesion.obtenerNombre() != null) "inicio" else "login" }
+    // Identificar al usuario conectado
+    var usuarioIdActivo by remember {
+        mutableStateOf(sesion.obtenerIdUsuario())
+    }
 
-    // Nombre del usuario que inició sesión (se recupera de la sesión guardada)
-    var nombreUsuario by remember { mutableStateOf(sesion.obtenerNombre() ?: "Usuario") }
+    // Recuperar el usuario al iniciar la aplicación
+    LaunchedEffect(usuarioIdActivo) {
+        apunteViewModel.establecerUsuario(usuarioIdActivo)
+    }
 
-    // Muestra el modal "Cuenta creada" después de registrarse
-    var mostrarCuentaCreada by remember { mutableStateOf(false) }
+    // Evitar mostrar apuntes de otra cuenta
+    val apuntesDelUsuario = apuntes.filter {
+        it.usuarioId == usuarioIdActivo
+    }
+
+    // Abrir Inicio solamente con una sesión válida
+    val rutaInicial = remember {
+        if (sesion.obtenerIdUsuario() != null) {
+            "inicio"
+        } else {
+            "login"
+        }
+    }
+
+    var nombreUsuario by remember {
+        mutableStateOf(
+            sesion.obtenerNombre() ?: "Usuario"
+        )
+    }
+
+    // Ventana de cuenta creada
+    var mostrarCuentaCreada by remember {
+        mutableStateOf(false)
+    }
 
     Scaffold(
         bottomBar = {
-            // La barra solo se muestra en las 4 pantallas principales
             if (pestanas.any { it.ruta == rutaActual }) {
                 NavigationBar {
                     pestanas.forEach { pestana ->
                         NavigationBarItem(
                             selected = rutaActual == pestana.ruta,
-                            onClick = { irAPestana(navController, pestana.ruta) },
-                            icon = { Icon(pestana.icono, contentDescription = pestana.titulo) },
-                            label = { Text(pestana.titulo) }
+                            onClick = {
+                                irAPestana(
+                                    navController,
+                                    pestana.ruta
+                                )
+                            },
+                            icon = {
+                                Icon(
+                                    pestana.icono,
+                                    contentDescription = pestana.titulo
+                                )
+                            },
+                            label = {
+                                Text(pestana.titulo)
+                            }
                         )
                     }
                 }
             }
         }
     ) { innerPadding ->
+
         NavHost(
             navController = navController,
             startDestination = rutaInicial,
             modifier = Modifier.padding(innerPadding)
         ) {
+
+            // LOGIN
             composable("login") {
                 Login(
                     mensajeError = usuarioViewModel.mensajeError,
                     onIniciarSesion = { correo, contrasena ->
-                        usuarioViewModel.iniciarSesion(correo, contrasena) { nombreGuardado ->
-                            nombreUsuario = nombreGuardado
-                            sesion.guardarSesion(nombreGuardado)
+
+                        usuarioViewModel.iniciarSesion(
+                            correo,
+                            contrasena
+                        ) { usuario ->
+
+                            nombreUsuario = usuario.nombre
+
+                            // Guardar la sesión
+                            sesion.guardarSesion(usuario)
+
+                            // Cambiar el usuario activo
+                            usuarioIdActivo = usuario.id
+                            apunteViewModel.establecerUsuario(
+                                usuario.id
+                            )
+
                             navController.navigate("inicio") {
-                                popUpTo("login") { inclusive = true }
+                                popUpTo("login") {
+                                    inclusive = true
+                                }
                             }
                         }
                     },
@@ -111,44 +176,75 @@ fun AppNavigation(
                 )
             }
 
+            // REGISTRO
             composable("registro") {
                 Registro(
                     mensajeError = usuarioViewModel.mensajeError,
                     mostrarCuentaCreada = mostrarCuentaCreada,
+
                     onAceptarCuentaCreada = {
                         mostrarCuentaCreada = false
+
                         navController.navigate("inicio") {
-                            popUpTo("login") { inclusive = true }
+                            popUpTo("login") {
+                                inclusive = true
+                            }
                         }
                     },
-                    onCrearCuenta = { nombre, correo, contrasena, perfil ->
-                        usuarioViewModel.registrar(nombre, correo, contrasena, perfil) { nombreGuardado ->
-                            nombreUsuario = nombreGuardado
-                            sesion.guardarSesion(nombreGuardado)
+
+                    onCrearCuenta = {
+                            nombre,
+                            correo,
+                            contrasena,
+                            perfil ->
+
+                        usuarioViewModel.registrar(
+                            nombre,
+                            correo,
+                            contrasena,
+                            perfil
+                        ) { usuario ->
+
+                            nombreUsuario = usuario.nombre
+
+                            // Guardar la nueva sesión
+                            sesion.guardarSesion(usuario)
+
+                            // Activar el usuario registrado
+                            usuarioIdActivo = usuario.id
+                            apunteViewModel.establecerUsuario(
+                                usuario.id
+                            )
+
                             mostrarCuentaCreada = true
                         }
                     },
+
                     onIniciarSesion = {
                         usuarioViewModel.limpiarError()
                         navController.popBackStack()
                     },
+
                     onCambiarCorreo = {
                         usuarioViewModel.limpiarError()
                     }
-
-
-
-
                 )
-
             }
 
+            // INICIO
             composable("inicio") {
                 Inicio(
                     nombre = nombreUsuario,
                     entregas = entregas,
-                    apuntes = apuntes,
-                    onIrAMaterial = { irAPestana(navController, "material") },
+                    apuntes = apuntesDelUsuario,
+
+                    onIrAMaterial = {
+                        irAPestana(
+                            navController,
+                            "material"
+                        )
+                    },
+
                     onSimularAviso = {
                         Notificaciones.mostrarAvisoCambio(
                             context,
@@ -156,29 +252,51 @@ fun AppNavigation(
                             "Se modificó el Código del Trabajo (aviso de ejemplo)"
                         )
                     },
+
                     onCerrarSesion = {
                         sesion.cerrarSesion()
                         usuarioViewModel.limpiarError()
+
+                        // Limpiar los datos del usuario anterior
+                        usuarioIdActivo = null
+                        apunteViewModel.establecerUsuario(null)
+
+                        nombreUsuario = "Usuario"
+
                         navController.navigate("login") {
-                            popUpTo("inicio") { inclusive = true }
+                            popUpTo("inicio") {
+                                inclusive = true
+                            }
                         }
                     }
                 )
             }
+
+            // ENTREGAS
+            // Las entregas se separarán en el siguiente paso
             composable("entregas") {
                 Entregas(
                     entregas = entregas,
+
                     onGuardarEntrega = { materia, titulo, fecha ->
-                        entregaViewModel.agregarEntrega(materia, titulo, fecha)
+                        entregaViewModel.agregarEntrega(
+                            materia,
+                            titulo,
+                            fecha
+                        )
                     },
+
                     onEliminarEntrega = { entrega ->
                         entregaViewModel.eliminarEntrega(entrega)
                     }
                 )
             }
+
+            // APUNTES
             composable("apuntes") {
                 Apuntes(
-                    apuntes = apuntes,
+                    apuntes = apuntesDelUsuario,
+
                     onGuardarApunte = { materia, titulo, contenido ->
                         apunteViewModel.agregarApunte(
                             materia,
@@ -186,6 +304,7 @@ fun AppNavigation(
                             contenido
                         )
                     },
+
                     onEditarApunte = { apunte, titulo, contenido ->
                         apunteViewModel.editarApunte(
                             apunte,
@@ -193,60 +312,114 @@ fun AppNavigation(
                             contenido
                         )
                     },
+
                     onCompartir = { apunte ->
                         compartirApunte(context, apunte)
                     },
+
                     onEliminarApunte = { apunte ->
                         apunteViewModel.eliminarApunte(apunte)
                     }
                 )
             }
+
+            // MATERIAL DE ESTUDIO
             composable("material") {
                 Material(
                     onAbrirMaterial = { material ->
-                        navController.navigate("visor/${material.archivoPdf}")
+                        navController.navigate(
+                            "visor/${material.archivoPdf}"
+                        )
                     },
+
                     obtenerComentarios = comentarioViewModel::comentarios,
+
                     autor = nombreUsuario,
+
                     onAgregarComentario = { archivoPdf, texto ->
-                        comentarioViewModel.agregarComentario(archivoPdf, nombreUsuario, texto)
+                        comentarioViewModel.agregarComentario(
+                            archivoPdf,
+                            nombreUsuario,
+                            texto
+                        )
                     },
+
                     onEditarComentario = { comentario, texto ->
-                        comentarioViewModel.editarComentario(comentario, texto)
+                        comentarioViewModel.editarComentario(
+                            comentario,
+                            texto
+                        )
                     },
-                    onEliminarComentario = comentarioViewModel::eliminarComentario
+
+                    onEliminarComentario =
+                        comentarioViewModel::eliminarComentario
                 )
             }
 
+            // VISOR PDF
             composable("visor/{archivo}") { entrada ->
-                val archivo = entrada.arguments?.getString("archivo") ?: ""
-                val titulo = materialesEstudio.firstOrNull { it.archivoPdf == archivo }?.titulo ?: "Material"
+
+                val archivo = entrada.arguments
+                    ?.getString("archivo") ?: ""
+
+                val titulo = materialesEstudio
+                    .firstOrNull {
+                        it.archivoPdf == archivo
+                    }?.titulo ?: "Material"
+
                 VisorPdf(
                     titulo = titulo,
                     nombreArchivo = archivo,
-                    onVolver = { navController.popBackStack() }
+                    onVolver = {
+                        navController.popBackStack()
+                    }
                 )
             }
         }
     }
 }
 
-// Cambia de pestaña sin apilar pantallas repetidas
-private fun irAPestana(navController: NavController, ruta: String) {
+// Navegación entre pestañas
+private fun irAPestana(
+    navController: NavController,
+    ruta: String
+) {
     navController.navigate(ruta) {
-        popUpTo("inicio") { saveState = true }
+        popUpTo("inicio") {
+            saveState = true
+        }
+
         launchSingleTop = true
         restoreState = true
     }
 }
 
-// Abre el selector de Android para enviar el apunte como texto (WhatsApp, correo, etc.)
-private fun compartirApunte(context: Context, apunte: Apunte) {
-    val texto = "${apunte.titulo} (${apunte.materia})\n\n${apunte.contenido}"
+// Compartir apuntes usando Android
+private fun compartirApunte(
+    context: Context,
+    apunte: Apunte
+) {
+    val texto =
+        "${apunte.titulo} (${apunte.materia})\n\n${apunte.contenido}"
+
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, apunte.titulo)
-        putExtra(Intent.EXTRA_TEXT, texto)
+
+        putExtra(
+            Intent.EXTRA_SUBJECT,
+            apunte.titulo
+        )
+
+        putExtra(
+            Intent.EXTRA_TEXT,
+            texto
+        )
     }
-    context.startActivity(Intent.createChooser(intent, "Compartir apunte"))
+
+    context.startActivity(
+        Intent.createChooser(
+            intent,
+            "Compartir apunte"
+        )
+    )
 }
