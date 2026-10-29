@@ -1,6 +1,6 @@
+
 package com.example.studydesk.ui
 
-import android.R.attr.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -13,9 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,6 +42,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studydesk.R
+import com.example.studydesk.util.Validaciones
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -50,22 +56,33 @@ fun Login(
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var cargando by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
 
-
+    // Controla cuándo mostrar los errores visuales.
     var mostrarError by remember { mutableStateOf(false) }
-    val correoError = mostrarError && correo.isBlank()
-    val passwordError = mostrarError && password.isBlank()
+
+    // Validaciones centralizadas.
+    val correoError = if (mostrarError) {
+        Validaciones.validarCorreo(correo)
+    } else null
+
+    val passwordError = if (mostrarError) {
+        Validaciones.validarContrasena(password)
+    } else null
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start
     ) {
 
+        // Logo de StudyDesk.
         Image(
             painter = painterResource(id = R.drawable.logo),
-            contentDescription = "Logo de StudyFlow",
+            contentDescription = "Logo de StudyDesk",
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(96.dp)
@@ -75,6 +92,7 @@ fun Login(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Campo de correo.
         Text(
             text = "Correo",
             fontWeight = FontWeight.Bold,
@@ -88,11 +106,22 @@ fun Login(
                 correo = nuevoTexto
             },
             placeholder = { Text("nombre@correo.cl") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            isError = correoError,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = null
+                )
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email
+            ),
+            isError = correoError != null,
             supportingText = {
-                if (correoError) {
-                    Text("El correo es obligatorio", color = Color.Red)
+                if (correoError != null) {
+                    Text(
+                        text = correoError,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -102,6 +131,7 @@ fun Login(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Campo de contraseña.
         Text(
             text = "Contraseña",
             fontWeight = FontWeight.Bold,
@@ -117,12 +147,23 @@ fun Login(
                 password = nuevoTexto
             },
             placeholder = { Text("••••••••") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null
+                )
+            },
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = passwordError,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password
+            ),
+            isError = passwordError != null,
             supportingText = {
-                if (passwordError) {
-                    Text("La contraseña es obligatoria", color = Color.Red)
+                if (passwordError != null) {
+                    Text(
+                        text = passwordError,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -132,23 +173,45 @@ fun Login(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Mensajes de error provenientes del ViewModel.
         if (mensajeError != null) {
-            Text(text = mensajeError, color = Color.Red, fontSize = 13.sp)
+            Text(
+                text = mensajeError,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 13.sp
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
         }
 
+        // Botón de inicio de sesión.
         Button(
             onClick = {
-                if (correo.isBlank() || password.isBlank()) {
-                    mostrarError = true
-                } else {
+
+                // Activar la validación visual de los campos.
+                mostrarError = true
+
+                val correoValido =
+                    Validaciones.validarCorreo(correo) == null
+
+                val passwordValida =
+                    Validaciones.validarContrasena(password) == null
+
+                // Solo iniciar sesión si ambos campos son válidos.
+                if (correoValido && passwordValida) {
                     mostrarError = false
                     cargando = true
 
                     scope.launch {
+                        // Conserva la animación de carga original.
                         delay(2000)
+
                         cargando = false
-                        onIniciarSesion(correo, password)
+
+                        onIniciarSesion(
+                            correo.trim(),
+                            password
+                        )
                     }
                 }
             },
@@ -168,7 +231,11 @@ fun Login(
                     color = Color.White
                 )
             } else {
-                Text("Iniciar sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    text = "Iniciar sesión",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
             }
         }
 
@@ -183,13 +250,17 @@ fun Login(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Navegación hacia Registro.
         OutlinedButton(
             onClick = onRegistro,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Color(0xFF3C4EB4)),
+            border = BorderStroke(
+                1.dp,
+                Color(0xFF3C4EB4)
+            ),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = Color(0xFF3C4EB4)
             )
