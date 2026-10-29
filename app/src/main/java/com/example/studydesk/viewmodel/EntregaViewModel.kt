@@ -49,4 +49,11 @@ class EntregaViewModel(
             )
         }
     }
+
+    // Eliminar una entrega de la base de datos
+    fun eliminarEntrega(entrega: Entrega) {
+        viewModelScope.launch {
+            repository.eliminarEntrega(entrega)
+        }
+    }
 }

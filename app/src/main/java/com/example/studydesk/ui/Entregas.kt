@@ -1,3 +1,4 @@
+
 package com.example.studydesk.ui
 
 import androidx.compose.foundation.BorderStroke
@@ -12,20 +13,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,48 +47,79 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studydesk.model.Entrega
 import com.example.studydesk.ui.theme.StudyDeskTheme
+import com.example.studydesk.util.Validaciones
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import com.example.studydesk.util.Validaciones
 
+// Colores de la aplicación
 private val Indigo = Color(0xFF3949AB)
 private val Fondo = Color(0xFFF6F7FB)
 private val TextoOscuro = Color(0xFF1B1F3B)
 private val TextoSuave = Color(0xFF4A5073)
 private val Borde = Color(0xFFE3E6F0)
 private val Lavanda = Color(0xFFE8EAF6)
+private val RojoEliminar = Color(0xFFB3261E)
 
 @Composable
 fun Entregas(
     entregas: List<Entrega>,
-    onGuardarEntrega: (materia: String, titulo: String, fecha: String) -> Unit = { _, _, _ -> }
+    onGuardarEntrega: (
+        materia: String,
+        titulo: String,
+        fecha: String
+    ) -> Unit = { _, _, _ -> },
+    onEliminarEntrega: (Entrega) -> Unit = {}
 ) {
-    var mostrarFormulario by remember { mutableStateOf(false) }
-    var mostrarCalendario by remember { mutableStateOf(false) }
+    var mostrarFormulario by remember {
+        mutableStateOf(false)
+    }
 
-    // Fecha elegida en el calendario para filtrar la lista (null = se ven todas)
-    var fechaFiltro by remember { mutableStateOf<String?>(null) }
-    val visibles = if (fechaFiltro == null) entregas else entregas.filter { it.fecha == fechaFiltro }
+    var mostrarCalendario by remember {
+        mutableStateOf(false)
+    }
+
+    // Entrega que el usuario desea eliminar
+    var entregaParaEliminar by remember {
+        mutableStateOf<Entrega?>(null)
+    }
+
+    // Fecha seleccionada para filtrar las entregas
+    var fechaFiltro by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    val visibles = if (fechaFiltro == null) {
+        entregas
+    } else {
+        entregas.filter { it.fecha == fechaFiltro }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Fondo)
     ) {
-        Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 12.dp)) {
+
+        // Encabezado
+        Column(
+            modifier = Modifier.padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = 28.dp,
+                bottom = 12.dp
+            )
+        ) {
             Text(
-                text = if (entregas.size == 1) "1 pendiente" else "${entregas.size} pendientes",
+                text = if (entregas.size == 1)
+                    "1 pendiente"
+                else
+                    "${entregas.size} pendientes",
                 fontSize = 12.sp,
                 color = TextoSuave
             )
+
             Text(
                 text = "Entregas",
                 fontSize = 26.sp,
@@ -90,6 +128,7 @@ fun Entregas(
             )
         }
 
+        // Mostrar el filtro de fecha seleccionado
         if (fechaFiltro != null) {
             Row(
                 modifier = Modifier
@@ -98,13 +137,27 @@ fun Entregas(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Mostrando: $fechaFiltro", fontSize = 13.sp, color = TextoSuave)
-                TextButton(onClick = { fechaFiltro = null }) {
-                    Text(text = "Ver todas", color = Indigo, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Mostrando: $fechaFiltro",
+                    fontSize = 13.sp,
+                    color = TextoSuave
+                )
+
+                TextButton(
+                    onClick = {
+                        fechaFiltro = null
+                    }
+                ) {
+                    Text(
+                        text = "Ver todas",
+                        color = Indigo,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
 
+        // Lista de entregas guardadas
         if (entregas.isEmpty()) {
             Text(
                 text = "Aún no tienes entregas. Agrega la primera con el botón de abajo.",
@@ -130,67 +183,149 @@ fun Entregas(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(visibles) { entrega ->
-                    TarjetaEntrega(entrega)
+                items(
+                    items = visibles,
+                    key = { it.id }
+                ) { entrega ->
+                    TarjetaEntrega(
+                        entrega = entrega,
+                        onEliminar = {
+                            entregaParaEliminar = entrega
+                        }
+                    )
                 }
             }
         }
 
+        // Botones de calendario y agregar entrega
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(
+                    horizontal = 20.dp,
+                    vertical = 14.dp
+                ),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             OutlinedButton(
-                onClick = { mostrarCalendario = true },
+                onClick = {
+                    mostrarCalendario = true
+                },
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, Indigo),
                 modifier = Modifier.height(48.dp)
             ) {
-                Text(text = "Calendario", color = Indigo, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = "Calendario",
+                    color = Indigo,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             Button(
-                onClick = { mostrarFormulario = true },
+                onClick = {
+                    mostrarFormulario = true
+                },
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Indigo),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Indigo
+                ),
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp)
             ) {
-                Text(text = "+ Agregar entrega", fontWeight = FontWeight.Bold)
+                Text(
+                    text = "+ Agregar entrega",
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
+        // Formulario para crear entregas
         if (mostrarFormulario) {
             FormularioEntrega(
                 onGuardar = { materia, titulo, fecha ->
                     onGuardarEntrega(materia, titulo, fecha)
                     mostrarFormulario = false
                 },
-                onCancelar = { mostrarFormulario = false }
+                onCancelar = {
+                    mostrarFormulario = false
+                }
             )
         }
 
+        // Calendario para filtrar entregas
         if (mostrarCalendario) {
             SelectorFecha(
                 onFechaElegida = { fecha ->
                     fechaFiltro = fecha
                     mostrarCalendario = false
                 },
-                onCancelar = { mostrarCalendario = false }
+                onCancelar = {
+                    mostrarCalendario = false
+                }
+            )
+        }
+
+        // Confirmación antes de eliminar una entrega
+        entregaParaEliminar?.let { entrega ->
+            AlertDialog(
+                onDismissRequest = {
+                    entregaParaEliminar = null
+                },
+                title = {
+                    Text("Eliminar entrega")
+                },
+                text = {
+                    Text(
+                        "¿Estás seguro de que deseas eliminar " +
+                                "\"${entrega.titulo}\"? " +
+                                "Esta acción no se puede deshacer."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onEliminarEntrega(entrega)
+                            entregaParaEliminar = null
+                        }
+                    ) {
+                        Text(
+                            text = "Eliminar",
+                            color = RojoEliminar
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            entregaParaEliminar = null
+                        }
+                    ) {
+                        Text(
+                            text = "Cancelar",
+                            color = Indigo
+                        )
+                    }
+                }
             )
         }
     }
 }
 
+// Tarjeta que muestra una entrega
 @Composable
-private fun TarjetaEntrega(entrega: Entrega) {
+private fun TarjetaEntrega(
+    entrega: Entrega,
+    onEliminar: () -> Unit
+) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
         border = BorderStroke(1.dp, Borde),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -201,42 +336,85 @@ private fun TarjetaEntrega(entrega: Entrega) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = entrega.materia, fontSize = 12.sp, color = TextoSuave)
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = entrega.materia,
+                    fontSize = 12.sp,
+                    color = TextoSuave
+                )
+
                 Text(
                     text = entrega.titulo,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextoOscuro
                 )
+
+                // Nuevo botón para eliminar una entrega
+                TextButton(
+                    onClick = onEliminar
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        color = RojoEliminar,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
-            Surface(shape = RoundedCornerShape(8.dp), color = Lavanda) {
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Lavanda
+            ) {
                 Text(
                     text = entrega.fecha,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF283593),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(
+                        horizontal = 8.dp,
+                        vertical = 4.dp
+                    )
                 )
             }
         }
     }
 }
 
-
+// Formulario con validaciones centralizadas
 @Composable
 private fun FormularioEntrega(
-    onGuardar: (materia: String, titulo: String, fecha: String) -> Unit,
+    onGuardar: (
+        materia: String,
+        titulo: String,
+        fecha: String
+    ) -> Unit,
     onCancelar: () -> Unit
 ) {
-    var materia by remember { mutableStateOf("") }
-    var titulo by remember { mutableStateOf("") }
-    var fecha by remember { mutableStateOf("") }
+    var materia by remember {
+        mutableStateOf("")
+    }
 
-    var mostrarErrores by remember { mutableStateOf(false) }
-    var mostrarCalendario by remember { mutableStateOf(false) }
+    var titulo by remember {
+        mutableStateOf("")
+    }
 
-    // Validaciones centralizadas
+    var fecha by remember {
+        mutableStateOf("")
+    }
+
+    var mostrarErrores by remember {
+        mutableStateOf(false)
+    }
+
+    var mostrarCalendario by remember {
+        mutableStateOf(false)
+    }
+
+    // Validaciones de los campos
     val materiaError = if (mostrarErrores) {
         Validaciones.validarMateriaEntrega(materia)
     } else null
@@ -259,7 +437,7 @@ private fun FormularioEntrega(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
-                // Campo materia
+                // Materia
                 CampoEntrega(
                     valor = materia,
                     onCambio = { materia = it },
@@ -267,7 +445,7 @@ private fun FormularioEntrega(
                     mensajeError = materiaError
                 )
 
-                // Campo nombre del trabajo
+                // Nombre del trabajo
                 CampoEntrega(
                     valor = titulo,
                     onCambio = { titulo = it },
@@ -275,9 +453,11 @@ private fun FormularioEntrega(
                     mensajeError = tituloError
                 )
 
-                // Selector de fecha
+                // Seleccionar fecha
                 OutlinedButton(
-                    onClick = { mostrarCalendario = true },
+                    onClick = {
+                        mostrarCalendario = true
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -299,7 +479,8 @@ private fun FormularioEntrega(
                     Text(
                         text = if (fecha.isBlank())
                             "Elegir fecha de entrega"
-                        else "Entrega: $fecha",
+                        else
+                            "Entrega: $fecha",
                         color = if (fechaError != null)
                             MaterialTheme.colorScheme.error
                         else Indigo,
@@ -307,7 +488,6 @@ private fun FormularioEntrega(
                     )
                 }
 
-                // Mensaje de error de fecha
                 if (fechaError != null) {
                     Text(
                         text = fechaError,
@@ -317,7 +497,6 @@ private fun FormularioEntrega(
                 }
             }
         },
-
         confirmButton = {
             Button(
                 onClick = {
@@ -332,8 +511,11 @@ private fun FormularioEntrega(
                     val fechaValida =
                         Validaciones.validarFechaEntrega(fecha) == null
 
-                    // Guardar solo si todos los campos son válidos
-                    if (materiaValida && tituloValido && fechaValida) {
+                    if (
+                        materiaValida &&
+                        tituloValido &&
+                        fechaValida
+                    ) {
                         onGuardar(
                             materia.trim(),
                             titulo.trim(),
@@ -348,15 +530,19 @@ private fun FormularioEntrega(
                 Text("Guardar")
             }
         },
-
         dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text("Cancelar", color = Indigo)
+            TextButton(
+                onClick = onCancelar
+            ) {
+                Text(
+                    text = "Cancelar",
+                    color = Indigo
+                )
             }
         }
     )
 
-    // Calendario para seleccionar la fecha
+    // Calendario del formulario
     if (mostrarCalendario) {
         SelectorFecha(
             onFechaElegida = { fechaElegida ->
@@ -370,9 +556,7 @@ private fun FormularioEntrega(
     }
 }
 
-
-
-// Calendario para elegir un día; entrega la fecha como texto, por ejemplo "12 oct"
+// Calendario de Material 3
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SelectorFecha(
@@ -386,31 +570,51 @@ private fun SelectorFecha(
         confirmButton = {
             TextButton(
                 onClick = {
-                    estadoCalendario.selectedDateMillis?.let { onFechaElegida(formatearFecha(it)) }
+                    estadoCalendario.selectedDateMillis?.let {
+                        onFechaElegida(formatearFecha(it))
+                    }
                 }
             ) {
-                Text("Aceptar", color = Indigo)
+                Text(
+                    text = "Aceptar",
+                    color = Indigo
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancelar) {
-                Text("Cancelar", color = Indigo)
+            TextButton(
+                onClick = onCancelar
+            ) {
+                Text(
+                    text = "Cancelar",
+                    color = Indigo
+                )
             }
         }
     ) {
-        DatePicker(state = estadoCalendario)
+        DatePicker(
+            state = estadoCalendario
+        )
     }
 }
 
-// Convierte la fecha elegida en el calendario a texto, por ejemplo "12 oct".
-// El calendario entrega la fecha en hora UTC, por eso se fija esa zona para no correr un día.
-private fun formatearFecha(milisegundos: Long): String {
-    val formato = SimpleDateFormat("d MMM", Locale.forLanguageTag("es-CL"))
+// Formatear la fecha seleccionada
+private fun formatearFecha(
+    milisegundos: Long
+): String {
+    val formato = SimpleDateFormat(
+        "d MMM",
+        Locale.forLanguageTag("es-CL")
+    )
+
     formato.timeZone = TimeZone.getTimeZone("UTC")
-    return formato.format(Date(milisegundos))
+
+    return formato.format(
+        Date(milisegundos)
+    )
 }
 
-
+// Campo reutilizable con validaciones visuales
 @Composable
 private fun CampoEntrega(
     valor: String,
@@ -418,8 +622,6 @@ private fun CampoEntrega(
     etiqueta: String,
     mensajeError: String?
 ) {
-
-    // Ícono según el campo
     val icono = when (etiqueta) {
         "Materia" -> Icons.Default.List
         else -> Icons.Default.Edit
@@ -428,17 +630,16 @@ private fun CampoEntrega(
     OutlinedTextField(
         value = valor,
         onValueChange = onCambio,
-        label = { Text(etiqueta) },
-
+        label = {
+            Text(etiqueta)
+        },
         leadingIcon = {
             Icon(
                 imageVector = icono,
                 contentDescription = null
             )
         },
-
         isError = mensajeError != null,
-
         supportingText = {
             if (mensajeError != null) {
                 Text(
@@ -447,21 +648,30 @@ private fun CampoEntrega(
                 )
             }
         },
-
         singleLine = true,
         modifier = Modifier.fillMaxWidth()
     )
 }
 
-
+// Vista previa de la pantalla
 @Preview(showBackground = true)
 @Composable
 fun EntregasPreview() {
     StudyDeskTheme {
         Entregas(
             entregas = listOf(
-                Entrega(1, "Derecho Civil", "Ensayo: responsabilidad contractual", "12 oct"),
-                Entrega(2, "Derecho Penal", "Análisis de jurisprudencia", "15 oct")
+                Entrega(
+                    1,
+                    "Derecho Civil",
+                    "Ensayo: responsabilidad contractual",
+                    "12 oct"
+                ),
+                Entrega(
+                    2,
+                    "Derecho Penal",
+                    "Análisis de jurisprudencia",
+                    "15 oct"
+                )
             )
         )
     }

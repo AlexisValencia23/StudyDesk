@@ -13,4 +13,9 @@ class EntregaRepository(private val entregaDao: EntregaDao) {
     suspend fun agregarEntrega(entrega: Entrega) {
         entregaDao.insertar(entrega)
     }
+
+    // Eliminar una entrega
+    suspend fun eliminarEntrega(entrega: Entrega) {
+        entregaDao.eliminar(entrega)
+    }
 }
