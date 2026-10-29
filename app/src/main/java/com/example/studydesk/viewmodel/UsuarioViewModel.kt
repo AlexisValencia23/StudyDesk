@@ -7,14 +7,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studydesk.model.Usuario
 import com.example.studydesk.repository.UsuarioRepository
+import com.example.studydesk.util.Validaciones
 import kotlinx.coroutines.launch
 
-class UsuarioViewModel(private val repository: UsuarioRepository) : ViewModel() {
+class UsuarioViewModel(
+    private val repository: UsuarioRepository
+) : ViewModel() {
 
-    // Mensaje que la pantalla muestra cuando algo sale mal (null = sin error)
     var mensajeError by mutableStateOf<String?>(null)
         private set
 
+    // Registrar usuario
     fun registrar(
         nombre: String,
         correo: String,
@@ -22,6 +25,13 @@ class UsuarioViewModel(private val repository: UsuarioRepository) : ViewModel() 
         perfil: String,
         onExito: (String) -> Unit
     ) {
+        // Validaciones antes de guardar en Room
+        mensajeError = Validaciones.validarNombre(nombre)
+            ?: Validaciones.validarCorreo(correo)
+                    ?: Validaciones.validarContrasena(contrasena)
+
+        if (mensajeError != null) return
+
         viewModelScope.launch {
             val correoLimpio = correo.trim().lowercase()
 
@@ -36,19 +46,29 @@ class UsuarioViewModel(private val repository: UsuarioRepository) : ViewModel() 
                         perfil = perfil
                     )
                 )
+
                 mensajeError = null
                 onExito(nombre.trim())
             }
         }
     }
 
+    // Iniciar sesión
     fun iniciarSesion(
         correo: String,
         contrasena: String,
         onExito: (String) -> Unit
     ) {
+        // Validar antes de consultar Room
+        mensajeError = Validaciones.validarCorreo(correo)
+            ?: Validaciones.validarContrasena(contrasena)
+
+        if (mensajeError != null) return
+
         viewModelScope.launch {
-            val usuario = repository.buscarPorCorreo(correo.trim().lowercase())
+            val usuario = repository.buscarPorCorreo(
+                correo.trim().lowercase()
+            )
 
             if (usuario != null && usuario.contrasena == contrasena) {
                 mensajeError = null
