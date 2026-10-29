@@ -9,7 +9,7 @@ data class MaterialEstudio(
     val fechaActualizacion: String
 )
 
-// Materiales disponibles en la app. Cada archivo debe estar en app/src/main/assets.
+
 // La fecha de actualización se escribe a mano aquí cada vez que se cambia un PDF.
 val materialesEstudio = listOf(
     MaterialEstudio(
