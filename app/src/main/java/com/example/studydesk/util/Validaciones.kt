@@ -66,4 +66,28 @@ object Validaciones {
         }
         return null
     }
+
+    // Validar materia de una entrega
+    fun validarMateriaEntrega(materia: String): String? {
+        if (materia.isBlank()) {
+            return "La materia es obligatoria"
+        }
+        return null
+    }
+
+    // Validar nombre del trabajo
+    fun validarTituloEntrega(titulo: String): String? {
+        if (titulo.isBlank()) {
+            return "El nombre del trabajo es obligatorio"
+        }
+        return null
+    }
+
+    // Validar fecha de entrega
+    fun validarFechaEntrega(fecha: String): String? {
+        if (fecha.isBlank()) {
+            return "Debes seleccionar una fecha de entrega"
+        }
+        return null
+    }
 }
