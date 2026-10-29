@@ -42,4 +42,28 @@ object Validaciones {
 
         return null
     }
+
+    // Validar materia de un apunte
+    fun validarMateriaApunte(materia: String): String? {
+        if (materia.isBlank()) {
+            return "La materia es obligatoria"
+        }
+        return null
+    }
+
+    // Validar título de un apunte
+    fun validarTituloApunte(titulo: String): String? {
+        if (titulo.isBlank()) {
+            return "El título es obligatorio"
+        }
+        return null
+    }
+
+    // Validar contenido de un apunte
+    fun validarContenidoApunte(contenido: String): String? {
+        if (contenido.isBlank()) {
+            return "El contenido es obligatorio"
+        }
+        return null
+    }
 }

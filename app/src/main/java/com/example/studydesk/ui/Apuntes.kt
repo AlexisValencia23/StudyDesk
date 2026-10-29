@@ -39,6 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studydesk.model.Apunte
 import com.example.studydesk.ui.theme.StudyDeskTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import com.example.studydesk.util.Validaciones
 
 private val Indigo = Color(0xFF3949AB)
 private val Fondo = Color(0xFFF6F7FB)
@@ -212,6 +219,7 @@ private fun BotonAccion(texto: String, modifier: Modifier, onClick: () -> Unit) 
 
 // Ventana para crear un apunte nuevo o, si recibe uno, editar su título y contenido.
 // No deja guardar si falta algún campo.
+
 @Composable
 private fun FormularioApunte(
     apunteInicial: Apunte?,
@@ -220,36 +228,66 @@ private fun FormularioApunte(
 ) {
     val editando = apunteInicial != null
 
-    var materia by remember { mutableStateOf(apunteInicial?.materia ?: "") }
-    var titulo by remember { mutableStateOf(apunteInicial?.titulo ?: "") }
-    var contenido by remember { mutableStateOf(apunteInicial?.contenido ?: "") }
-    var mostrarErrores by remember { mutableStateOf(false) }
+    var materia by remember(apunteInicial?.id) {
+        mutableStateOf(apunteInicial?.materia ?: "")
+    }
+
+    var titulo by remember(apunteInicial?.id) {
+        mutableStateOf(apunteInicial?.titulo ?: "")
+    }
+
+    var contenido by remember(apunteInicial?.id) {
+        mutableStateOf(apunteInicial?.contenido ?: "")
+    }
+
+    var mostrarErrores by remember(apunteInicial?.id) {
+        mutableStateOf(false)
+    }
+
+    // Validaciones centralizadas
+    val materiaError = if (mostrarErrores && !editando) {
+        Validaciones.validarMateriaApunte(materia)
+    } else null
+
+    val tituloError = if (mostrarErrores) {
+        Validaciones.validarTituloApunte(titulo)
+    } else null
+
+    val contenidoError = if (mostrarErrores) {
+        Validaciones.validarContenidoApunte(contenido)
+    } else null
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(if (editando) "Editar apunte" else "Nuevo apunte") },
+        title = {
+            Text(if (editando) "Editar apunte" else "Nuevo apunte")
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // La materia solo se elige al crear el apunte
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // La materia solo se ingresa al crear
                 if (!editando) {
                     CampoApunte(
                         valor = materia,
                         onCambio = { materia = it },
                         etiqueta = "Materia",
-                        mensajeError = if (mostrarErrores && materia.isBlank()) "La materia es obligatoria" else null
+                        mensajeError = materiaError
                     )
                 }
+
                 CampoApunte(
                     valor = titulo,
                     onCambio = { titulo = it },
                     etiqueta = "Título",
-                    mensajeError = if (mostrarErrores && titulo.isBlank()) "El título es obligatorio" else null
+                    mensajeError = tituloError
                 )
+
                 CampoApunte(
                     valor = contenido,
                     onCambio = { contenido = it },
                     etiqueta = "Contenido",
-                    mensajeError = if (mostrarErrores && contenido.isBlank()) "El contenido es obligatorio" else null,
+                    mensajeError = contenidoError,
                     unaLinea = false
                 )
             }
@@ -257,13 +295,28 @@ private fun FormularioApunte(
         confirmButton = {
             Button(
                 onClick = {
-                    if (materia.isBlank() || titulo.isBlank() || contenido.isBlank()) {
-                        mostrarErrores = true
-                    } else {
-                        onGuardar(materia, titulo, contenido)
+                    mostrarErrores = true
+
+                    val materiaValida = editando ||
+                            Validaciones.validarMateriaApunte(materia) == null
+
+                    val tituloValido =
+                        Validaciones.validarTituloApunte(titulo) == null
+
+                    val contenidoValido =
+                        Validaciones.validarContenidoApunte(contenido) == null
+
+                    if (materiaValida && tituloValido && contenidoValido) {
+                        onGuardar(
+                            materia.trim(),
+                            titulo.trim(),
+                            contenido.trim()
+                        )
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Indigo)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Indigo
+                )
             ) {
                 Text(if (editando) "Guardar cambios" else "Guardar")
             }
@@ -275,6 +328,7 @@ private fun FormularioApunte(
         }
     )
 }
+
 
 // Ventana para leer un apunte completo
 @Composable
@@ -299,6 +353,7 @@ private fun DialogoVerApunte(apunte: Apunte, onCerrar: () -> Unit) {
     )
 }
 
+
 @Composable
 private fun CampoApunte(
     valor: String,
@@ -307,17 +362,37 @@ private fun CampoApunte(
     mensajeError: String?,
     unaLinea: Boolean = true
 ) {
+    val icono = when (etiqueta) {
+        "Materia" -> Icons.Default.List
+        "Título" -> Icons.Default.Edit
+        else -> Icons.Default.Info
+    }
+
     OutlinedTextField(
         value = valor,
         onValueChange = onCambio,
         label = { Text(etiqueta) },
+        leadingIcon = {
+            Icon(
+                imageVector = icono,
+                contentDescription = null
+            )
+        },
         isError = mensajeError != null,
-        supportingText = { if (mensajeError != null) Text(mensajeError) },
+        supportingText = {
+            if (mensajeError != null) {
+                Text(
+                    text = mensajeError,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
         singleLine = unaLinea,
         minLines = if (unaLinea) 1 else 3,
         modifier = Modifier.fillMaxWidth()
     )
 }
+
 
 @Preview(showBackground = true)
 @Composable
