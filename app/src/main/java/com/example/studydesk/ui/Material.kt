@@ -45,6 +45,9 @@ import com.example.studydesk.model.materialesEstudio
 import com.example.studydesk.ui.theme.StudyDeskTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.MaterialTheme
+import com.example.studydesk.util.Validaciones
 
 private val Indigo = Color(0xFF3949AB)
 private val Fondo = Color(0xFFF6F7FB)
@@ -217,6 +220,13 @@ private fun DialogoComentarios(
 
     val editando = comentarioEnEdicion != null
 
+    // Validación centralizada del comentario
+    val errorComentario = if (mostrarError) {
+        Validaciones.validarComentario(texto)
+    } else {
+        null
+    }
+
     AlertDialog(
         onDismissRequest = onCerrar,
         title = { Text("Comentarios: ${material.titulo}") },
@@ -244,34 +254,63 @@ private fun DialogoComentarios(
                     }
                 }
 
+
                 OutlinedTextField(
                     value = texto,
                     onValueChange = { texto = it },
-                    label = { Text(if (editando) "Editando tu comentario" else "Escribe un comentario") },
-                    isError = mostrarError && texto.isBlank(),
+                    label = {
+                        Text(
+                            if (editando) "Editando tu comentario"
+                            else "Escribe un comentario"
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null
+                        )
+                    },
+                    isError = errorComentario != null,
                     supportingText = {
-                        if (mostrarError && texto.isBlank()) Text("Escribe algo antes de guardar")
+                        if (errorComentario != null) {
+                            Text(
+                                text = errorComentario,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                     },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
+
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (texto.isBlank()) {
+                    // Validar usando la clase Validaciones
+                    val error = Validaciones.validarComentario(texto)
+
+                    if (error != null) {
                         mostrarError = true
                     } else {
-                        comentarioEnEdicion?.let { onEditar(it, texto) } ?: onPublicar(texto)
+                        comentarioEnEdicion?.let {
+                            onEditar(it, texto)
+                        } ?: onPublicar(texto)
+
                         comentarioEnEdicion = null
                         texto = ""
                         mostrarError = false
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Indigo)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Indigo
+                )
             ) {
-                Text(if (editando) "Guardar cambios" else "Publicar")
+                Text(
+                    if (editando) "Guardar cambios"
+                    else "Publicar"
+                )
             }
         },
         dismissButton = {

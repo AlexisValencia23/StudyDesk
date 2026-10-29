@@ -90,4 +90,11 @@ object Validaciones {
         }
         return null
     }
+    // Validar contenido de un comentario
+    fun validarComentario(texto: String): String? {
+        if (texto.isBlank()) {
+            return "Escribe algo antes de guardar"
+        }
+        return null
+    }
 }
