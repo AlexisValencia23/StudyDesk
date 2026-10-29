@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.studydesk.model.Apunte
 import com.example.studydesk.model.materialesEstudio
 import com.example.studydesk.notification.Notificaciones
+import com.example.studydesk.util.SesionManager
 import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
@@ -56,11 +57,15 @@ fun AppNavigation(
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
     val context = LocalContext.current
+    val sesion = remember { SesionManager(context) }
     val entregas by entregaViewModel.entregas.collectAsState()
     val apuntes by apunteViewModel.apuntes.collectAsState()
 
-    // Nombre del usuario que inició sesión
-    var nombreUsuario by remember { mutableStateOf("Usuario") }
+    // Si hay una sesión guardada, la app abre directo en inicio (se calcula una sola vez)
+    val rutaInicial = remember { if (sesion.obtenerNombre() != null) "inicio" else "login" }
+
+    // Nombre del usuario que inició sesión (se recupera de la sesión guardada)
+    var nombreUsuario by remember { mutableStateOf(sesion.obtenerNombre() ?: "Usuario") }
 
     // Muestra el modal "Cuenta creada" después de registrarse
     var mostrarCuentaCreada by remember { mutableStateOf(false) }
@@ -84,7 +89,7 @@ fun AppNavigation(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "login",
+            startDestination = rutaInicial,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("login") {
@@ -93,6 +98,7 @@ fun AppNavigation(
                     onIniciarSesion = { correo, contrasena ->
                         usuarioViewModel.iniciarSesion(correo, contrasena) { nombreGuardado ->
                             nombreUsuario = nombreGuardado
+                            sesion.guardarSesion(nombreGuardado)
                             navController.navigate("inicio") {
                                 popUpTo("login") { inclusive = true }
                             }
@@ -118,6 +124,7 @@ fun AppNavigation(
                     onCrearCuenta = { nombre, correo, contrasena, perfil ->
                         usuarioViewModel.registrar(nombre, correo, contrasena, perfil) { nombreGuardado ->
                             nombreUsuario = nombreGuardado
+                            sesion.guardarSesion(nombreGuardado)
                             mostrarCuentaCreada = true
                         }
                     },
@@ -142,6 +149,7 @@ fun AppNavigation(
                         )
                     },
                     onCerrarSesion = {
+                        sesion.cerrarSesion()
                         usuarioViewModel.limpiarError()
                         navController.navigate("login") {
                             popUpTo("inicio") { inclusive = true }
