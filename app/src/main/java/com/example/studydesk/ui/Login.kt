@@ -1,5 +1,6 @@
 package com.example.studydesk.ui
 
+import android.R.attr.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -21,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studydesk.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun Login(
@@ -44,6 +49,9 @@ fun Login(
 
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
 
     var mostrarError by remember { mutableStateOf(false) }
     val correoError = mostrarError && correo.isBlank()
@@ -135,9 +143,16 @@ fun Login(
                     mostrarError = true
                 } else {
                     mostrarError = false
-                    onIniciarSesion(correo, password)
+                    cargando = true
+
+                    scope.launch {
+                        delay(2000)
+                        cargando = false
+                        onIniciarSesion(correo, password)
+                    }
                 }
             },
+            enabled = !cargando,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -146,7 +161,15 @@ fun Login(
                 containerColor = Color(0xFF3C4EB4)
             )
         ) {
-            Text("Iniciar sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            if (cargando) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.5.dp,
+                    color = Color.White
+                )
+            } else {
+                Text("Iniciar sesión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
