@@ -1,3 +1,4 @@
+
 package com.example.studydesk.ui
 
 import androidx.compose.foundation.layout.Arrangement
@@ -11,10 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studydesk.ui.theme.StudyDeskTheme
+import com.example.studydesk.util.Validaciones
 
 private val Indigo = Color(0xFF3949AB)
 private val TextoOscuro = Color(0xFF1B1F3B)
@@ -51,6 +59,14 @@ fun Registro(
     var contrasena by remember { mutableStateOf("") }
     var perfil by remember { mutableStateOf("Estudiante de Derecho") }
 
+    // Mostrar errores después del primer intento de registro
+    var mostrarErrores by remember { mutableStateOf(false) }
+
+    // Reutilizar las validaciones centralizadas
+    val nombreError = if (mostrarErrores) Validaciones.validarNombre(nombre) else null
+    val correoError = if (mostrarErrores) Validaciones.validarCorreo(correo) else null
+    val contrasenaError = if (mostrarErrores) Validaciones.validarContrasena(contrasena) else null
+
     val perfiles = listOf("Estudiante de Derecho", "Abogado/a")
 
     Column(
@@ -66,6 +82,7 @@ fun Registro(
             fontWeight = FontWeight.Bold,
             color = Indigo
         )
+
         Text(
             text = "Crear cuenta",
             fontSize = 28.sp,
@@ -73,6 +90,7 @@ fun Registro(
             color = TextoOscuro,
             modifier = Modifier.padding(top = 4.dp)
         )
+
         Text(
             text = "Regístrate para estudiar y consultar legislación.",
             fontSize = 14.sp,
@@ -82,20 +100,40 @@ fun Registro(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Campo nombre
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
             label = { Text("Nombre completo") },
+            leadingIcon = {
+                Icon(Icons.Default.Person, contentDescription = null)
+            },
+            isError = nombreError != null,
+            supportingText = {
+                if (nombreError != null) {
+                    Text(nombreError, color = MaterialTheme.colorScheme.error)
+                }
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        // Campo correo
         OutlinedTextField(
             value = correo,
             onValueChange = { correo = it },
             label = { Text("Correo") },
+            leadingIcon = {
+                Icon(Icons.Default.Email, contentDescription = null)
+            },
+            isError = correoError != null,
+            supportingText = {
+                if (correoError != null) {
+                    Text(correoError, color = MaterialTheme.colorScheme.error)
+                }
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
@@ -103,11 +141,23 @@ fun Registro(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        // Campo contraseña
         OutlinedTextField(
             value = contrasena,
             onValueChange = { contrasena = it },
             label = { Text("Contraseña") },
-            supportingText = { Text("Mínimo 8 caracteres") },
+            leadingIcon = {
+                Icon(Icons.Default.Lock, contentDescription = null)
+            },
+            isError = contrasenaError != null,
+            supportingText = {
+                Text(
+                    text = contrasenaError ?: "Mínimo 8 caracteres",
+                    color = if (contrasenaError != null)
+                        MaterialTheme.colorScheme.error
+                    else TextoSuave
+                )
+            },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -116,7 +166,12 @@ fun Registro(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Text(text = "Soy", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextoOscuro)
+        Text(
+            text = "Soy",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextoOscuro
+        )
 
         Row(
             modifier = Modifier
@@ -136,14 +191,29 @@ fun Registro(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Errores generales desde el ViewModel
         if (mensajeError != null) {
-            Text(text = mensajeError, color = Color.Red, fontSize = 13.sp)
+            Text(
+                text = mensajeError,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 13.sp
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
 
         Button(
-            onClick = { onCrearCuenta(nombre, correo, contrasena, perfil) },
-            enabled = nombre.isNotBlank() && correo.isNotBlank() && contrasena.length >= 8,
+            onClick = {
+                mostrarErrores = true
+
+                // Solo enviar el formulario cuando todos los datos sean válidos
+                if (
+                    Validaciones.validarNombre(nombre) == null &&
+                    Validaciones.validarCorreo(correo) == null &&
+                    Validaciones.validarContrasena(contrasena) == null
+                ) {
+                    onCrearCuenta(nombre, correo, contrasena, perfil)
+                }
+            },
             colors = ButtonDefaults.buttonColors(containerColor = Indigo),
             modifier = Modifier
                 .fillMaxWidth()
@@ -157,17 +227,29 @@ fun Registro(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "¿Ya tienes cuenta?", fontSize = 13.sp, color = TextoSuave)
+            Text(
+                text = "¿Ya tienes cuenta?",
+                fontSize = 13.sp,
+                color = TextoSuave
+            )
+
             TextButton(onClick = onIniciarSesion) {
-                Text(text = "Iniciar sesión", color = Indigo, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Iniciar sesión",
+                    color = Indigo,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
+        // Modal de confirmación
         if (mostrarCuentaCreada) {
             AlertDialog(
-                onDismissRequest = { },
+                onDismissRequest = {},
                 title = { Text("Cuenta creada") },
-                text = { Text("Tu cuenta se creó correctamente. ¡Bienvenido/a a StudyDesk!") },
+                text = {
+                    Text("Tu cuenta se creó correctamente. ¡Bienvenido/a a StudyDesk!")
+                },
                 confirmButton = {
                     Button(
                         onClick = onAceptarCuentaCreada,
