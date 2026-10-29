@@ -119,7 +119,7 @@ fun Inicio(
         Tarjeta(fondo = Lavanda, borde = Color(0xFFC5CAE9), retrasoMs = 300) {
             Titulo("Material de estudio")
             Text(
-                text = "4 materias con normas y jurisprudencia actualizadas.",
+                text = "3 materias con normas y jurisprudencia actualizadas.",
                 fontSize = 12.sp,
                 color = Color(0xFF283593)
             )
