@@ -13,7 +13,6 @@ data class Entrega(
     val titulo: String,
     val fecha: String,
 
-    // Identifica al dueño de la entrega
     @ColumnInfo(defaultValue = "0")
     val usuarioId: Int = 0
 )

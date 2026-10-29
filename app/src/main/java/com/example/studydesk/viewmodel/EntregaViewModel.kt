@@ -6,8 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.studydesk.model.Entrega
 import com.example.studydesk.repository.EntregaRepository
 import com.example.studydesk.util.Validaciones
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -15,22 +19,39 @@ class EntregaViewModel(
     private val repository: EntregaRepository
 ) : ViewModel() {
 
-    // Lista de entregas almacenadas en Room.
-    val entregas: StateFlow<List<Entrega>> =
-        repository.obtenerTodas()
-            .stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(5000),
-                emptyList()
-            )
+    // Identificador de la cuenta activa
+    private val usuarioActivo = MutableStateFlow<Int?>(null)
 
-    // Crear una nueva entrega.
+    // Mostrar únicamente las entregas del usuario conectado
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val entregas: StateFlow<List<Entrega>> = usuarioActivo
+        .flatMapLatest { usuarioId ->
+            if (usuarioId == null) {
+                flowOf(emptyList<Entrega>())
+            } else {
+                repository.obtenerPorUsuario(usuarioId)
+            }
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
+        )
+
+    // Cambiar el usuario conectado
+    fun establecerUsuario(usuarioId: Int?) {
+        usuarioActivo.value = usuarioId
+    }
+
+    // Crear una entrega
     fun agregarEntrega(
         materia: String,
         titulo: String,
         fecha: String
     ) {
-        // Validar antes de guardar en Room.
+        val usuarioId = usuarioActivo.value ?: return
+
+        // Mantener las validaciones existentes
         if (
             Validaciones.validarMateriaEntrega(materia) != null ||
             Validaciones.validarTituloEntrega(titulo) != null ||
@@ -44,16 +65,27 @@ class EntregaViewModel(
                 Entrega(
                     materia = materia.trim(),
                     titulo = titulo.trim(),
-                    fecha = fecha.trim()
+                    fecha = fecha.trim(),
+                    usuarioId = usuarioId
                 )
             )
         }
     }
 
-    // Eliminar una entrega de la base de datos
+    // Eliminar solamente una entrega propia
     fun eliminarEntrega(entrega: Entrega) {
+        val usuarioId = usuarioActivo.value ?: return
+
+        // Comprobar que la entrega pertenece al usuario
+        if (entrega.usuarioId != usuarioId) {
+            return
+        }
+
         viewModelScope.launch {
-            repository.eliminarEntrega(entrega)
+            repository.eliminarEntrega(
+                entregaId = entrega.id,
+                usuarioId = usuarioId
+            )
         }
     }
 }

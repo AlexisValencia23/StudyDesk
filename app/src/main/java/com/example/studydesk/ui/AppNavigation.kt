@@ -38,6 +38,7 @@ import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
+// Pestañas de la aplicación
 private data class Pestana(
     val ruta: String,
     val titulo: String,
@@ -66,7 +67,7 @@ fun AppNavigation(
     val context = LocalContext.current
     val sesion = remember { SesionManager(context) }
 
-    // Datos obtenidos desde Room
+    // Datos desde Room
     val entregas by entregaViewModel.entregas.collectAsState()
     val apuntes by apunteViewModel.apuntes.collectAsState()
 
@@ -75,17 +76,22 @@ fun AppNavigation(
         mutableStateOf(sesion.obtenerIdUsuario())
     }
 
-    // Recuperar el usuario al iniciar la aplicación
+    // Actualizar apuntes y entregas al cambiar de cuenta
     LaunchedEffect(usuarioIdActivo) {
         apunteViewModel.establecerUsuario(usuarioIdActivo)
+        entregaViewModel.establecerUsuario(usuarioIdActivo)
     }
 
-    // Evitar mostrar apuntes de otra cuenta
+    // Evitar mostrar datos de otras cuentas
     val apuntesDelUsuario = apuntes.filter {
         it.usuarioId == usuarioIdActivo
     }
 
-    // Abrir Inicio solamente con una sesión válida
+    val entregasDelUsuario = entregas.filter {
+        it.usuarioId == usuarioIdActivo
+    }
+
+    // Recuperar la sesión guardada
     val rutaInicial = remember {
         if (sesion.obtenerIdUsuario() != null) {
             "inicio"
@@ -95,12 +101,9 @@ fun AppNavigation(
     }
 
     var nombreUsuario by remember {
-        mutableStateOf(
-            sesion.obtenerNombre() ?: "Usuario"
-        )
+        mutableStateOf(sesion.obtenerNombre() ?: "Usuario")
     }
 
-    // Ventana de cuenta creada
     var mostrarCuentaCreada by remember {
         mutableStateOf(false)
     }
@@ -144,21 +147,23 @@ fun AppNavigation(
             composable("login") {
                 Login(
                     mensajeError = usuarioViewModel.mensajeError,
-                    onIniciarSesion = { correo, contrasena ->
 
+                    onIniciarSesion = { correo, contrasena ->
                         usuarioViewModel.iniciarSesion(
                             correo,
                             contrasena
                         ) { usuario ->
 
                             nombreUsuario = usuario.nombre
-
-                            // Guardar la sesión
                             sesion.guardarSesion(usuario)
 
-                            // Cambiar el usuario activo
                             usuarioIdActivo = usuario.id
+
                             apunteViewModel.establecerUsuario(
+                                usuario.id
+                            )
+
+                            entregaViewModel.establecerUsuario(
                                 usuario.id
                             )
 
@@ -169,6 +174,7 @@ fun AppNavigation(
                             }
                         }
                     },
+
                     onRegistro = {
                         usuarioViewModel.limpiarError()
                         navController.navigate("registro")
@@ -206,13 +212,15 @@ fun AppNavigation(
                         ) { usuario ->
 
                             nombreUsuario = usuario.nombre
-
-                            // Guardar la nueva sesión
                             sesion.guardarSesion(usuario)
 
-                            // Activar el usuario registrado
                             usuarioIdActivo = usuario.id
+
                             apunteViewModel.establecerUsuario(
+                                usuario.id
+                            )
+
+                            entregaViewModel.establecerUsuario(
                                 usuario.id
                             )
 
@@ -235,7 +243,7 @@ fun AppNavigation(
             composable("inicio") {
                 Inicio(
                     nombre = nombreUsuario,
-                    entregas = entregas,
+                    entregas = entregasDelUsuario,
                     apuntes = apuntesDelUsuario,
 
                     onIrAMaterial = {
@@ -257,9 +265,10 @@ fun AppNavigation(
                         sesion.cerrarSesion()
                         usuarioViewModel.limpiarError()
 
-                        // Limpiar los datos del usuario anterior
                         usuarioIdActivo = null
+
                         apunteViewModel.establecerUsuario(null)
+                        entregaViewModel.establecerUsuario(null)
 
                         nombreUsuario = "Usuario"
 
@@ -273,10 +282,9 @@ fun AppNavigation(
             }
 
             // ENTREGAS
-            // Las entregas se separarán en el siguiente paso
             composable("entregas") {
                 Entregas(
-                    entregas = entregas,
+                    entregas = entregasDelUsuario,
 
                     onGuardarEntrega = { materia, titulo, fecha ->
                         entregaViewModel.agregarEntrega(
@@ -314,7 +322,10 @@ fun AppNavigation(
                     },
 
                     onCompartir = { apunte ->
-                        compartirApunte(context, apunte)
+                        compartirApunte(
+                            context,
+                            apunte
+                        )
                     },
 
                     onEliminarApunte = { apunte ->
@@ -379,7 +390,7 @@ fun AppNavigation(
     }
 }
 
-// Navegación entre pestañas
+// Navegación entre las pestañas
 private fun irAPestana(
     navController: NavController,
     ruta: String
@@ -394,7 +405,7 @@ private fun irAPestana(
     }
 }
 
-// Compartir apuntes usando Android
+// Compartir apuntes mediante Android
 private fun compartirApunte(
     context: Context,
     apunte: Apunte
