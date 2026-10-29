@@ -131,8 +131,16 @@ fun AppNavigation(
                     onIniciarSesion = {
                         usuarioViewModel.limpiarError()
                         navController.popBackStack()
+                    },
+                    onCambiarCorreo = {
+                        usuarioViewModel.limpiarError()
                     }
+
+
+
+
                 )
+
             }
 
             composable("inicio") {

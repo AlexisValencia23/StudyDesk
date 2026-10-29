@@ -51,31 +51,75 @@ fun Registro(
     mensajeError: String? = null,
     mostrarCuentaCreada: Boolean = false,
     onAceptarCuentaCreada: () -> Unit = {},
-    onCrearCuenta: (nombre: String, correo: String, contrasena: String, perfil: String) -> Unit = { _, _, _, _ -> },
-    onIniciarSesion: () -> Unit = {}
+    onCrearCuenta: (
+        nombre: String,
+        correo: String,
+        contrasena: String,
+        perfil: String
+    ) -> Unit = { _, _, _, _ -> },
+    onIniciarSesion: () -> Unit = {},
+    onCambiarCorreo: () -> Unit = {}
 ) {
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
-    var perfil by remember { mutableStateOf("Estudiante de Derecho") }
+    var perfil by remember {
+        mutableStateOf("Estudiante de Derecho")
+    }
 
     // Mostrar errores después del primer intento de registro
-    var mostrarErrores by remember { mutableStateOf(false) }
+    var mostrarErrores by remember {
+        mutableStateOf(false)
+    }
 
-    // Reutilizar las validaciones centralizadas
-    val nombreError = if (mostrarErrores) Validaciones.validarNombre(nombre) else null
-    val correoError = if (mostrarErrores) Validaciones.validarCorreo(correo) else null
-    val contrasenaError = if (mostrarErrores) Validaciones.validarContrasena(contrasena) else null
+    // Validaciones centralizadas
+    val nombreError = if (mostrarErrores) {
+        Validaciones.validarNombre(nombre)
+    } else {
+        null
+    }
 
-    val perfiles = listOf("Estudiante de Derecho", "Abogado/a")
+    val correoError = if (mostrarErrores) {
+        Validaciones.validarCorreo(correo)
+    } else {
+        null
+    }
+
+    val contrasenaError = if (mostrarErrores) {
+        Validaciones.validarContrasena(contrasena)
+    } else {
+        null
+    }
+
+    // Comprobar si el correo ya está registrado
+    val correoDuplicado = if (
+        mensajeError == "Ya existe una cuenta con ese correo"
+    ) {
+        mensajeError
+    } else {
+        null
+    }
+
+    // Mostrar error de formato o correo duplicado
+    val errorCorreo = correoError ?: correoDuplicado
+
+    val perfiles = listOf(
+        "Estudiante de Derecho",
+        "Abogado/a"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
+            .padding(
+                horizontal = 24.dp,
+                vertical = 32.dp
+            ),
         verticalArrangement = Arrangement.Center
     ) {
+
+        // Encabezado
         Text(
             text = "StudyDesk",
             fontSize = 13.sp,
@@ -103,15 +147,25 @@ fun Registro(
         // Campo nombre
         OutlinedTextField(
             value = nombre,
-            onValueChange = { nombre = it },
-            label = { Text("Nombre completo") },
+            onValueChange = {
+                nombre = it
+            },
+            label = {
+                Text("Nombre completo")
+            },
             leadingIcon = {
-                Icon(Icons.Default.Person, contentDescription = null)
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null
+                )
             },
             isError = nombreError != null,
             supportingText = {
                 if (nombreError != null) {
-                    Text(nombreError, color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = nombreError,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             singleLine = true,
@@ -123,19 +177,34 @@ fun Registro(
         // Campo correo
         OutlinedTextField(
             value = correo,
-            onValueChange = { correo = it },
-            label = { Text("Correo") },
-            leadingIcon = {
-                Icon(Icons.Default.Email, contentDescription = null)
+            onValueChange = {
+                correo = it
+
+                // Limpiar el error anterior al cambiar el correo
+                onCambiarCorreo()
             },
-            isError = correoError != null,
+            label = {
+                Text("Correo")
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Email,
+                    contentDescription = null
+                )
+            },
+            isError = errorCorreo != null,
             supportingText = {
-                if (correoError != null) {
-                    Text(correoError, color = MaterialTheme.colorScheme.error)
+                if (errorCorreo != null) {
+                    Text(
+                        text = errorCorreo,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -144,28 +213,40 @@ fun Registro(
         // Campo contraseña
         OutlinedTextField(
             value = contrasena,
-            onValueChange = { contrasena = it },
-            label = { Text("Contraseña") },
+            onValueChange = {
+                contrasena = it
+            },
+            label = {
+                Text("Contraseña")
+            },
             leadingIcon = {
-                Icon(Icons.Default.Lock, contentDescription = null)
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null
+                )
             },
             isError = contrasenaError != null,
             supportingText = {
                 Text(
                     text = contrasenaError ?: "Mínimo 8 caracteres",
-                    color = if (contrasenaError != null)
+                    color = if (contrasenaError != null) {
                         MaterialTheme.colorScheme.error
-                    else TextoSuave
+                    } else {
+                        TextoSuave
+                    }
                 )
             },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
+        // Selección de perfil
         Text(
             text = "Soy",
             fontSize = 13.sp,
@@ -183,45 +264,74 @@ fun Registro(
             perfiles.forEach { opcion ->
                 FilterChip(
                     selected = perfil == opcion,
-                    onClick = { perfil = opcion },
-                    label = { Text(opcion) }
+                    onClick = {
+                        perfil = opcion
+                    },
+                    label = {
+                        Text(opcion)
+                    }
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Errores generales desde el ViewModel
-        if (mensajeError != null) {
+        // Mostrar otros errores generales
+        // El correo duplicado ya se muestra bajo su campo
+        if (
+            mensajeError != null &&
+            mensajeError != "Ya existe una cuenta con ese correo"
+        ) {
             Text(
                 text = mensajeError,
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 13.sp
             )
+
             Spacer(modifier = Modifier.height(8.dp))
         }
 
+        // Botón crear cuenta
         Button(
             onClick = {
                 mostrarErrores = true
 
-                // Solo enviar el formulario cuando todos los datos sean válidos
-                if (
-                    Validaciones.validarNombre(nombre) == null &&
-                    Validaciones.validarCorreo(correo) == null &&
+                val nombreValido =
+                    Validaciones.validarNombre(nombre) == null
+
+                val correoValido =
+                    Validaciones.validarCorreo(correo) == null
+
+                val contrasenaValida =
                     Validaciones.validarContrasena(contrasena) == null
+
+                if (
+                    nombreValido &&
+                    correoValido &&
+                    contrasenaValida
                 ) {
-                    onCrearCuenta(nombre, correo, contrasena, perfil)
+                    onCrearCuenta(
+                        nombre,
+                        correo,
+                        contrasena,
+                        perfil
+                    )
                 }
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Indigo),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Indigo
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
         ) {
-            Text(text = "Crear cuenta", fontWeight = FontWeight.Bold)
+            Text(
+                text = "Crear cuenta",
+                fontWeight = FontWeight.Bold
+            )
         }
 
+        // Volver al inicio de sesión
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -233,7 +343,9 @@ fun Registro(
                 color = TextoSuave
             )
 
-            TextButton(onClick = onIniciarSesion) {
+            TextButton(
+                onClick = onIniciarSesion
+            ) {
                 Text(
                     text = "Iniciar sesión",
                     color = Indigo,
@@ -242,18 +354,25 @@ fun Registro(
             }
         }
 
-        // Modal de confirmación
+        // Modal de cuenta creada
         if (mostrarCuentaCreada) {
             AlertDialog(
                 onDismissRequest = {},
-                title = { Text("Cuenta creada") },
+                title = {
+                    Text("Cuenta creada")
+                },
                 text = {
-                    Text("Tu cuenta se creó correctamente. ¡Bienvenido/a a StudyDesk!")
+                    Text(
+                        "Tu cuenta se creó correctamente. " +
+                                "¡Bienvenido/a a StudyDesk!"
+                    )
                 },
                 confirmButton = {
                     Button(
                         onClick = onAceptarCuentaCreada,
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Indigo
+                        )
                     ) {
                         Text("Continuar")
                     }
@@ -263,6 +382,7 @@ fun Registro(
     }
 }
 
+// Vista previa
 @Preview(showBackground = true)
 @Composable
 fun RegistroPreview() {
