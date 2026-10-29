@@ -172,12 +172,25 @@ fun AppNavigation(
                 Apuntes(
                     apuntes = apuntes,
                     onGuardarApunte = { materia, titulo, contenido ->
-                        apunteViewModel.agregarApunte(materia, titulo, contenido)
+                        apunteViewModel.agregarApunte(
+                            materia,
+                            titulo,
+                            contenido
+                        )
                     },
                     onEditarApunte = { apunte, titulo, contenido ->
-                        apunteViewModel.editarApunte(apunte, titulo, contenido)
+                        apunteViewModel.editarApunte(
+                            apunte,
+                            titulo,
+                            contenido
+                        )
                     },
-                    onCompartir = { apunte -> compartirApunte(context, apunte) }
+                    onCompartir = { apunte ->
+                        compartirApunte(context, apunte)
+                    },
+                    onEliminarApunte = { apunte ->
+                        apunteViewModel.eliminarApunte(apunte)
+                    }
                 )
             }
             composable("material") {

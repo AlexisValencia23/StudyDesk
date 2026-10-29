@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
+import androidx.room3.Delete
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -18,4 +19,8 @@ interface ApunteDao {
 
     @Query("SELECT * FROM apuntes ORDER BY id DESC")
     fun obtenerTodos(): Flow<List<Apunte>>
+
+    // Eliminar un apunte de la base de datos
+    @Delete
+    suspend fun eliminar(apunte: Apunte)
 }

@@ -17,4 +17,9 @@ class ApunteRepository(private val apunteDao: ApunteDao) {
     suspend fun editarApunte(apunte: Apunte) {
         apunteDao.actualizar(apunte)
     }
+
+    // Eliminar un apunte
+    suspend fun eliminarApunte(apunte: Apunte) {
+        apunteDao.eliminar(apunte)
+    }
 }

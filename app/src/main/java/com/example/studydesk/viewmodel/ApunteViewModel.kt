@@ -50,6 +50,12 @@ class ApunteViewModel(
             )
         }
     }
+    // Eliminar un apunte guardado en Room
+    fun eliminarApunte(apunte: Apunte) {
+        viewModelScope.launch {
+            repository.eliminarApunte(apunte)
+        }
+    }
 
     // Editar un apunte existente.
     fun editarApunte(
