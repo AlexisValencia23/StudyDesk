@@ -18,8 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.studydesk.util.SesionManager
 import com.example.studydesk.viewmodel.ApunteApiViewModel
 import com.example.studydesk.viewmodel.EntregaApiViewModel
 
@@ -30,9 +33,27 @@ fun Servidor(
     entregaApiViewModel: EntregaApiViewModel
 ) {
 
-    // Datos de Spring Boot
-    val apuntes by apunteApiViewModel.apuntes.collectAsState()
-    val entregas by entregaApiViewModel.entregas.collectAsState()
+    val context = LocalContext.current
+
+    val sesionManager = remember(context) {
+        SesionManager(context)
+    }
+
+    // Obtener el correo de la cuenta conectada
+    val correoUsuario = if (usuarioId != null) {
+        sesionManager.obtenerCorreoUsuario()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    } else {
+        null
+    }
+
+    // Datos obtenidos desde Spring Boot
+    val apuntes by
+    apunteApiViewModel.apuntes.collectAsState()
+
+    val entregas by
+    entregaApiViewModel.entregas.collectAsState()
 
     // Estados de carga
     val cargandoApuntes by
@@ -48,10 +69,16 @@ fun Servidor(
     val errorEntregas by
     entregaApiViewModel.mensajeError.collectAsState()
 
-    // Consultar datos cuando cambie el usuario
-    LaunchedEffect(usuarioId) {
-        apunteApiViewModel.establecerUsuario(usuarioId)
-        entregaApiViewModel.establecerUsuario(usuarioId)
+    // Consultar por correo cuando cambie la cuenta
+    LaunchedEffect(usuarioId, correoUsuario) {
+
+        apunteApiViewModel.establecerCorreo(
+            correoUsuario
+        )
+
+        entregaApiViewModel.establecerCorreo(
+            correoUsuario
+        )
     }
 
     Column(
@@ -74,15 +101,34 @@ fun Servidor(
 
         if (usuarioId == null) {
 
-            Text("Inicia sesión para consultar tus datos.")
+            Text(
+                text = "Inicia sesión para consultar tus datos."
+            )
+
+        } else if (correoUsuario == null) {
+
+            Text(
+                text = "No se encontró el correo de la sesión."
+            )
+
+            Text(
+                text = "Cierra sesión y vuelve a iniciar sesión para actualizar tus datos."
+            )
 
         } else {
+
+            // Mostrar el correo utilizado en las consultas
+            Text(
+                text = "Cuenta: $correoUsuario",
+                style = MaterialTheme.typography.bodyMedium
+            )
 
             // APUNTES DEL SERVIDOR
 
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
+
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -96,7 +142,8 @@ fun Servidor(
                     Button(
                         onClick = {
                             apunteApiViewModel.cargarApuntes()
-                        }
+                        },
+                        enabled = !cargandoApuntes
                     ) {
                         Text("Actualizar apuntes")
                     }
@@ -106,14 +153,21 @@ fun Servidor(
                     }
 
                     if (errorApuntes != null) {
+
                         Text(
                             text = errorApuntes ?: "",
                             color = MaterialTheme.colorScheme.error
                         )
                     }
 
-                    if (!cargandoApuntes && apuntes.isEmpty()) {
-                        Text("No hay apuntes en el servidor.")
+                    if (
+                        !cargandoApuntes &&
+                        errorApuntes == null &&
+                        apuntes.isEmpty()
+                    ) {
+                        Text(
+                            text = "No hay apuntes asociados a este correo en el servidor."
+                        )
                     }
 
                     apuntes.forEach { apunte ->
@@ -125,9 +179,17 @@ fun Servidor(
                             style = MaterialTheme.typography.titleSmall
                         )
 
-                        Text("Materia: ${apunte.materia}")
-                        Text("Fecha: ${apunte.fecha}")
-                        Text("Contenido: ${apunte.contenido}")
+                        Text(
+                            text = "Materia: ${apunte.materia}"
+                        )
+
+                        Text(
+                            text = "Fecha: ${apunte.fecha}"
+                        )
+
+                        Text(
+                            text = "Contenido: ${apunte.contenido}"
+                        )
                     }
                 }
             }
@@ -137,6 +199,7 @@ fun Servidor(
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
+
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -150,7 +213,8 @@ fun Servidor(
                     Button(
                         onClick = {
                             entregaApiViewModel.cargarEntregas()
-                        }
+                        },
+                        enabled = !cargandoEntregas
                     ) {
                         Text("Actualizar entregas")
                     }
@@ -160,14 +224,21 @@ fun Servidor(
                     }
 
                     if (errorEntregas != null) {
+
                         Text(
                             text = errorEntregas ?: "",
                             color = MaterialTheme.colorScheme.error
                         )
                     }
 
-                    if (!cargandoEntregas && entregas.isEmpty()) {
-                        Text("No hay entregas en el servidor.")
+                    if (
+                        !cargandoEntregas &&
+                        errorEntregas == null &&
+                        entregas.isEmpty()
+                    ) {
+                        Text(
+                            text = "No hay entregas asociadas a este correo en el servidor."
+                        )
                     }
 
                     entregas.forEach { entrega ->
@@ -179,8 +250,13 @@ fun Servidor(
                             style = MaterialTheme.typography.titleSmall
                         )
 
-                        Text("Materia: ${entrega.materia}")
-                        Text("Fecha: ${entrega.fecha}")
+                        Text(
+                            text = "Materia: ${entrega.materia}"
+                        )
+
+                        Text(
+                            text = "Fecha: ${entrega.fecha}"
+                        )
                     }
                 }
             }

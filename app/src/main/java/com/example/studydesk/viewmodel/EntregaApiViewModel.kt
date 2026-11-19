@@ -10,10 +10,20 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.util.Locale
 
 class EntregaApiViewModel(
     private val repository: EntregaApiRepository = EntregaApiRepository()
 ) : ViewModel() {
+
+    // Cuenta que consulta el servidor
+    private data class CuentaActiva(
+        val usuarioId: Int? = null,
+        val correo: String? = null
+    )
+
+    private var cuentaActiva: CuentaActiva? = null
 
     // Entregas obtenidas desde Spring Boot
     private val _entregas =
@@ -26,38 +36,61 @@ class EntregaApiViewModel(
     val cargando: StateFlow<Boolean> = _cargando
 
     // Mensajes de error
-    private val _mensajeError = MutableStateFlow<String?>(null)
+    private val _mensajeError =
+        MutableStateFlow<String?>(null)
+
     val mensajeError: StateFlow<String?> = _mensajeError
 
-    // Usuario conectado
-    private var usuarioActivo: Int? = null
-
-    // Establecer el usuario actual
+    // Metodo antiguo: consultar por ID local
     fun establecerUsuario(usuarioId: Int?) {
-        usuarioActivo = usuarioId
+        actualizarCuenta(
+            usuarioId?.let {
+                CuentaActiva(usuarioId = it)
+            }
+        )
+    }
+
+    // Metodo nuevo: consultar por correo
+    fun establecerCorreo(correo: String?) {
+        val correoNormalizado = correo
+            ?.trim()
+            ?.lowercase(Locale.ROOT)
+            ?.takeIf { it.isNotEmpty() }
+
+        actualizarCuenta(
+            correoNormalizado?.let {
+                CuentaActiva(correo = it)
+            }
+        )
+    }
+
+    // Cambiar la cuenta activa
+    private fun actualizarCuenta(cuenta: CuentaActiva?) {
+        if (cuentaActiva == cuenta) return
+
+        cuentaActiva = cuenta
 
         _entregas.value = emptyList()
         _mensajeError.value = null
         _cargando.value = false
 
-        if (usuarioId != null) {
+        if (cuenta != null) {
             cargarEntregas()
         }
     }
 
-    // GET: Obtener entregas del servidor
+    // GET: Consultar las entregas del servidor
     fun cargarEntregas() {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
 
         viewModelScope.launch {
             _cargando.value = true
             _mensajeError.value = null
 
             try {
-                val resultado =
-                    repository.obtenerPorUsuario(usuarioId)
+                val resultado = consultarEntregas(cuenta)
 
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _entregas.value = resultado
                 }
 
@@ -65,16 +98,34 @@ class EntregaApiViewModel(
                 throw e
 
             } catch (e: Exception) {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _mensajeError.value =
                         "No se pudieron cargar las entregas del servidor."
                 }
 
             } finally {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _cargando.value = false
                 }
             }
+        }
+    }
+
+    // Consultar por correo o por ID
+    private suspend fun consultarEntregas(
+        cuenta: CuentaActiva
+    ): List<ApiEntrega> {
+
+        return when {
+            cuenta.correo != null -> {
+                repository.obtenerPorCorreo(cuenta.correo)
+            }
+
+            cuenta.usuarioId != null -> {
+                repository.obtenerPorUsuario(cuenta.usuarioId)
+            }
+
+            else -> emptyList()
         }
     }
 
@@ -93,13 +144,14 @@ class EntregaApiViewModel(
             return
         }
 
-        ejecutarOperacion { usuarioId ->
+        ejecutarOperacion { cuenta ->
             repository.crear(
                 ApiEntrega(
                     materia = materia.trim(),
                     titulo = titulo.trim(),
                     fecha = fecha.trim(),
-                    usuarioId = usuarioId
+                    usuarioId = cuenta.usuarioId,
+                    correoUsuario = cuenta.correo
                 )
             )
         }
@@ -112,10 +164,10 @@ class EntregaApiViewModel(
         nuevoTitulo: String,
         nuevaFecha: String
     ) {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
         val entregaId = entrega.id ?: return
 
-        if (entrega.usuarioId != usuarioId) return
+        if (!perteneceALaCuenta(entrega, cuenta)) return
 
         if (
             Validaciones.validarMateriaEntrega(nuevaMateria) != null ||
@@ -140,37 +192,60 @@ class EntregaApiViewModel(
 
     // DELETE: Eliminar una entrega
     fun eliminarEntrega(entrega: ApiEntrega) {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
         val entregaId = entrega.id ?: return
 
-        if (entrega.usuarioId != usuarioId) return
+        if (!perteneceALaCuenta(entrega, cuenta)) return
 
         ejecutarOperacion {
             val respuesta = repository.eliminar(entregaId)
 
             if (!respuesta.isSuccessful) {
-                throw retrofit2.HttpException(respuesta)
+                throw HttpException(respuesta)
             }
         }
     }
 
-    // Ejecutar operaciones y actualizar entregas
+    // Comprobar localmente el propietario
+    private fun perteneceALaCuenta(
+        entrega: ApiEntrega,
+        cuenta: CuentaActiva
+    ): Boolean {
+
+        return when {
+            cuenta.correo != null -> {
+                entrega.correoUsuario
+                    .orEmpty()
+                    .trim()
+                    .equals(cuenta.correo, ignoreCase = true)
+            }
+
+            cuenta.usuarioId != null -> {
+                entrega.usuarioId == cuenta.usuarioId
+            }
+
+            else -> false
+        }
+    }
+
+    // Ejecutar operaciones y actualizar la lista
     private fun ejecutarOperacion(
-        operacion: suspend (Int) -> Unit
+        operacion: suspend (CuentaActiva) -> Unit
     ) {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
 
         viewModelScope.launch {
+            if (cuentaActiva != cuenta) return@launch
+
             _cargando.value = true
             _mensajeError.value = null
 
             try {
-                operacion(usuarioId)
+                operacion(cuenta)
 
-                val resultado =
-                    repository.obtenerPorUsuario(usuarioId)
+                val resultado = consultarEntregas(cuenta)
 
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _entregas.value = resultado
                 }
 
@@ -178,13 +253,13 @@ class EntregaApiViewModel(
                 throw e
 
             } catch (e: Exception) {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _mensajeError.value =
-                        "No se pudo completar la operación en el servidor."
+                        "No se pudo completar la operacion en el servidor."
                 }
 
             } finally {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _cargando.value = false
                 }
             }
