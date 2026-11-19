@@ -72,6 +72,7 @@ fun AppNavigation(
     val rutaActual = entradaActual?.destination?.route
 
     val context = LocalContext.current
+
     val sesion = remember(context) {
         SesionManager(context)
     }
@@ -80,31 +81,31 @@ fun AppNavigation(
     val entregas by entregaViewModel.entregas.collectAsState()
     val apuntes by apunteViewModel.apuntes.collectAsState()
 
-    // ID local de la cuenta conectada
+    // Cuenta conectada
     var usuarioIdActivo by remember {
         mutableStateOf(sesion.obtenerIdUsuario())
     }
 
-    // Correo que se utilizara en Spring Boot
     var correoUsuarioActivo by remember {
         mutableStateOf(sesion.obtenerCorreoUsuario())
     }
 
-    // Actualizar los ViewModels al cambiar la cuenta
+    // Actualizar los ViewModels cuando cambie la cuenta
     LaunchedEffect(usuarioIdActivo, correoUsuarioActivo) {
 
+        // Apuntes: Room y Spring Boot
         apunteViewModel.establecerUsuario(usuarioIdActivo)
+        apunteViewModel.establecerCorreo(correoUsuarioActivo)
 
-        apunteViewModel.establecerCorreo(
-            correoUsuarioActivo
-        )
-
+        // Entregas: Room y Spring Boot
         entregaViewModel.establecerUsuario(usuarioIdActivo)
+        entregaViewModel.establecerCorreo(correoUsuarioActivo)
 
+        // Comentarios locales
         comentarioViewModel.establecerUsuario(usuarioIdActivo)
     }
 
-    // Mostrar solamente los datos propios de Room
+    // Filtrar registros locales
     val apuntesDelUsuario = apuntes.filter {
         it.usuarioId == usuarioIdActivo
     }
@@ -113,7 +114,7 @@ fun AppNavigation(
         it.usuarioId == usuarioIdActivo
     }
 
-    // Ruta inicial de la aplicacion
+    // Pantalla inicial
     val rutaInicial = remember {
         if (sesion.obtenerIdUsuario() != null) {
             "inicio"
@@ -189,13 +190,12 @@ fun AppNavigation(
 
                             nombreUsuario = usuario.nombre
 
-                            // Guardar sesion con correo
                             sesion.guardarSesion(usuario)
 
                             usuarioIdActivo = usuario.id
                             correoUsuarioActivo = usuario.correo
 
-                            // Preparar Room y el servidor
+                            // Preparar apuntes
                             apunteViewModel.establecerUsuario(
                                 usuario.id
                             )
@@ -204,10 +204,16 @@ fun AppNavigation(
                                 usuario.correo
                             )
 
+                            // Preparar entregas
                             entregaViewModel.establecerUsuario(
                                 usuario.id
                             )
 
+                            entregaViewModel.establecerCorreo(
+                                usuario.correo
+                            )
+
+                            // Preparar comentarios
                             comentarioViewModel.establecerUsuario(
                                 usuario.id
                             )
@@ -259,12 +265,12 @@ fun AppNavigation(
 
                             nombreUsuario = usuario.nombre
 
-                            // Guardar cuenta y correo
                             sesion.guardarSesion(usuario)
 
                             usuarioIdActivo = usuario.id
                             correoUsuarioActivo = usuario.correo
 
+                            // Preparar apuntes
                             apunteViewModel.establecerUsuario(
                                 usuario.id
                             )
@@ -273,10 +279,16 @@ fun AppNavigation(
                                 usuario.correo
                             )
 
+                            // Preparar entregas
                             entregaViewModel.establecerUsuario(
                                 usuario.id
                             )
 
+                            entregaViewModel.establecerCorreo(
+                                usuario.correo
+                            )
+
+                            // Preparar comentarios
                             comentarioViewModel.establecerUsuario(
                                 usuario.id
                             )
@@ -318,20 +330,21 @@ fun AppNavigation(
 
                     onCerrarSesion = {
 
-                        // Limpiar sesion
                         sesion.cerrarSesion()
-
                         usuarioViewModel.limpiarError()
 
                         usuarioIdActivo = null
                         correoUsuarioActivo = null
 
-                        // Limpiar datos de la cuenta activa
+                        // Limpiar apuntes
                         apunteViewModel.establecerUsuario(null)
                         apunteViewModel.establecerCorreo(null)
 
+                        // Limpiar entregas
                         entregaViewModel.establecerUsuario(null)
+                        entregaViewModel.establecerCorreo(null)
 
+                        // Limpiar comentarios
                         comentarioViewModel.establecerUsuario(null)
 
                         nombreUsuario = "Usuario"
@@ -345,7 +358,7 @@ fun AppNavigation(
                 )
             }
 
-            // ENTREGAS LOCALES
+            // ENTREGAS: ROOM Y SPRING BOOT
             composable("entregas") {
 
                 Entregas(
@@ -368,7 +381,7 @@ fun AppNavigation(
                 )
             }
 
-            // APUNTES LOCALES Y ENVIO AL SERVIDOR
+            // APUNTES: ROOM Y SPRING BOOT
             composable("apuntes") {
 
                 Apuntes(
@@ -377,8 +390,6 @@ fun AppNavigation(
                     onGuardarApunte = {
                             materia, titulo, contenido ->
 
-                        // El ViewModel guarda primero en Room
-                        // e intenta enviar una copia a Spring Boot
                         apunteViewModel.agregarApunte(
                             materia,
                             titulo,
@@ -452,7 +463,7 @@ fun AppNavigation(
                 )
             }
 
-            // SERVIDOR SPRING BOOT
+            // DATOS DEL SERVIDOR
             composable("servidor") {
 
                 val apunteApiViewModel:
@@ -503,7 +514,7 @@ private fun irAPestana(
     }
 }
 
-// Compartir apuntes con otras aplicaciones Android
+// Compartir apuntes con aplicaciones Android
 private fun compartirApunte(
     context: Context,
     apunte: Apunte
