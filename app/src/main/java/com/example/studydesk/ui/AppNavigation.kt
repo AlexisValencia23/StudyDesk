@@ -63,6 +63,7 @@ fun AppNavigation(
     apunteViewModel: ApunteViewModel,
     comentarioViewModel: ComentarioViewModel
 ) {
+
     val navController = rememberNavController()
 
     val entradaActual by
@@ -71,21 +72,35 @@ fun AppNavigation(
     val rutaActual = entradaActual?.destination?.route
 
     val context = LocalContext.current
-    val sesion = remember { SesionManager(context) }
+    val sesion = remember(context) {
+        SesionManager(context)
+    }
 
     // Datos locales de Room
     val entregas by entregaViewModel.entregas.collectAsState()
     val apuntes by apunteViewModel.apuntes.collectAsState()
 
-    // Usuario conectado
+    // ID local de la cuenta conectada
     var usuarioIdActivo by remember {
         mutableStateOf(sesion.obtenerIdUsuario())
     }
 
-    // Actualizar los ViewModels locales
-    LaunchedEffect(usuarioIdActivo) {
+    // Correo que se utilizara en Spring Boot
+    var correoUsuarioActivo by remember {
+        mutableStateOf(sesion.obtenerCorreoUsuario())
+    }
+
+    // Actualizar los ViewModels al cambiar la cuenta
+    LaunchedEffect(usuarioIdActivo, correoUsuarioActivo) {
+
         apunteViewModel.establecerUsuario(usuarioIdActivo)
+
+        apunteViewModel.establecerCorreo(
+            correoUsuarioActivo
+        )
+
         entregaViewModel.establecerUsuario(usuarioIdActivo)
+
         comentarioViewModel.establecerUsuario(usuarioIdActivo)
     }
 
@@ -98,6 +113,7 @@ fun AppNavigation(
         it.usuarioId == usuarioIdActivo
     }
 
+    // Ruta inicial de la aplicacion
     val rutaInicial = remember {
         if (sesion.obtenerIdUsuario() != null) {
             "inicio"
@@ -118,23 +134,30 @@ fun AppNavigation(
 
     Scaffold(
         bottomBar = {
+
             if (pestanas.any { it.ruta == rutaActual }) {
+
                 NavigationBar {
+
                     pestanas.forEach { pestana ->
+
                         NavigationBarItem(
                             selected = rutaActual == pestana.ruta,
+
                             onClick = {
                                 irAPestana(
                                     navController,
                                     pestana.ruta
                                 )
                             },
+
                             icon = {
                                 Icon(
                                     pestana.icono,
                                     contentDescription = pestana.titulo
                                 )
                             },
+
                             label = {
                                 Text(pestana.titulo)
                             }
@@ -153,22 +176,32 @@ fun AppNavigation(
 
             // LOGIN
             composable("login") {
+
                 Login(
                     mensajeError = usuarioViewModel.mensajeError,
 
                     onIniciarSesion = { correo, contrasena ->
+
                         usuarioViewModel.iniciarSesion(
                             correo,
                             contrasena
                         ) { usuario ->
 
                             nombreUsuario = usuario.nombre
+
+                            // Guardar sesion con correo
                             sesion.guardarSesion(usuario)
 
                             usuarioIdActivo = usuario.id
+                            correoUsuarioActivo = usuario.correo
 
+                            // Preparar Room y el servidor
                             apunteViewModel.establecerUsuario(
                                 usuario.id
+                            )
+
+                            apunteViewModel.establecerCorreo(
+                                usuario.correo
                             )
 
                             entregaViewModel.establecerUsuario(
@@ -196,6 +229,7 @@ fun AppNavigation(
 
             // REGISTRO
             composable("registro") {
+
                 Registro(
                     mensajeError = usuarioViewModel.mensajeError,
                     mostrarCuentaCreada = mostrarCuentaCreada,
@@ -224,12 +258,19 @@ fun AppNavigation(
                         ) { usuario ->
 
                             nombreUsuario = usuario.nombre
+
+                            // Guardar cuenta y correo
                             sesion.guardarSesion(usuario)
 
                             usuarioIdActivo = usuario.id
+                            correoUsuarioActivo = usuario.correo
 
                             apunteViewModel.establecerUsuario(
                                 usuario.id
+                            )
+
+                            apunteViewModel.establecerCorreo(
+                                usuario.correo
                             )
 
                             entregaViewModel.establecerUsuario(
@@ -257,6 +298,7 @@ fun AppNavigation(
 
             // INICIO
             composable("inicio") {
+
                 Inicio(
                     nombre = nombreUsuario,
                     entregas = entregasDelUsuario,
@@ -275,13 +317,21 @@ fun AppNavigation(
                     },
 
                     onCerrarSesion = {
+
+                        // Limpiar sesion
                         sesion.cerrarSesion()
+
                         usuarioViewModel.limpiarError()
 
                         usuarioIdActivo = null
+                        correoUsuarioActivo = null
 
+                        // Limpiar datos de la cuenta activa
                         apunteViewModel.establecerUsuario(null)
+                        apunteViewModel.establecerCorreo(null)
+
                         entregaViewModel.establecerUsuario(null)
+
                         comentarioViewModel.establecerUsuario(null)
 
                         nombreUsuario = "Usuario"
@@ -297,10 +347,13 @@ fun AppNavigation(
 
             // ENTREGAS LOCALES
             composable("entregas") {
+
                 Entregas(
                     entregas = entregasDelUsuario,
 
-                    onGuardarEntrega = { materia, titulo, fecha ->
+                    onGuardarEntrega = {
+                            materia, titulo, fecha ->
+
                         entregaViewModel.agregarEntrega(
                             materia,
                             titulo,
@@ -309,19 +362,23 @@ fun AppNavigation(
                     },
 
                     onEliminarEntrega = { entrega ->
+
                         entregaViewModel.eliminarEntrega(entrega)
                     }
                 )
             }
 
-            // APUNTES LOCALES
+            // APUNTES LOCALES Y ENVIO AL SERVIDOR
             composable("apuntes") {
+
                 Apuntes(
                     apuntes = apuntesDelUsuario,
 
                     onGuardarApunte = {
                             materia, titulo, contenido ->
 
+                        // El ViewModel guarda primero en Room
+                        // e intenta enviar una copia a Spring Boot
                         apunteViewModel.agregarApunte(
                             materia,
                             titulo,
@@ -340,10 +397,12 @@ fun AppNavigation(
                     },
 
                     onCompartir = { apunte ->
+
                         compartirApunte(context, apunte)
                     },
 
                     onEliminarApunte = { apunte ->
+
                         apunteViewModel.eliminarApunte(apunte)
                     }
                 )
@@ -351,8 +410,10 @@ fun AppNavigation(
 
             // MATERIAL DE ESTUDIO
             composable("material") {
+
                 Material(
                     onAbrirMaterial = { material ->
+
                         navController.navigate(
                             "visor/${material.archivoPdf}"
                         )
@@ -383,6 +444,7 @@ fun AppNavigation(
                     },
 
                     onEliminarComentario = { comentario ->
+
                         comentarioViewModel.eliminarComentario(
                             comentario
                         )
@@ -408,6 +470,7 @@ fun AppNavigation(
 
             // VISOR PDF
             composable("visor/{archivo}") { entrada ->
+
                 val archivo = entrada.arguments
                     ?.getString("archivo") ?: ""
 
@@ -440,7 +503,7 @@ private fun irAPestana(
     }
 }
 
-// Compartir apuntes con el selector de Android
+// Compartir apuntes con otras aplicaciones Android
 private fun compartirApunte(
     context: Context,
     apunte: Apunte
