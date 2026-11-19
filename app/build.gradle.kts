@@ -60,4 +60,9 @@ dependencies {
     ksp(libs.androidx.room3.compiler)
     implementation(libs.androidx.sqlite.bundled)
 
+    // Conexion con las APIs mediante Retrofit
+    implementation("com.squareup.retrofit2:retrofit:3.0.0")
+    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
+
+
 }
