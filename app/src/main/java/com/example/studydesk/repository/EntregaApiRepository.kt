@@ -10,28 +10,38 @@ class EntregaApiRepository(
     private val api: StudyDeskApi = RetrofitClient.api
 ) {
 
-    // Obtener entregas de un usuario
+    // GET: Obtener entregas por ID local
+    // Se mantiene para compatibilidad
     suspend fun obtenerPorUsuario(
         usuarioId: Int
     ): List<ApiEntrega> {
         return api.obtenerEntregas(usuarioId)
     }
 
-    // Obtener una entrega por su ID
+    // GET: Obtener entregas por correo
+    suspend fun obtenerPorCorreo(
+        correo: String
+    ): List<ApiEntrega> {
+        return api.obtenerEntregasPorCorreo(
+            correo.trim()
+        )
+    }
+
+    // GET: Obtener una entrega por su ID
     suspend fun obtenerPorId(
         id: Long
     ): ApiEntrega {
         return api.obtenerEntrega(id)
     }
 
-    // Crear una entrega en Spring Boot
+    // POST: Crear una entrega en Spring Boot
     suspend fun crear(
         entrega: ApiEntrega
     ): ApiEntrega {
         return api.crearEntrega(entrega)
     }
 
-    // Editar una entrega en Spring Boot
+    // PUT: Editar una entrega en Spring Boot
     suspend fun editar(
         id: Long,
         entrega: ApiEntrega
@@ -39,7 +49,7 @@ class EntregaApiRepository(
         return api.editarEntrega(id, entrega)
     }
 
-    // Eliminar una entrega de Spring Boot
+    // DELETE: Eliminar una entrega de Spring Boot
     suspend fun eliminar(
         id: Long
     ): Response<Void> {

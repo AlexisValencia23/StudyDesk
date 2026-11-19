@@ -7,8 +7,10 @@ import com.example.studydesk.backend.repository.ApunteRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/apuntes")
@@ -20,7 +22,8 @@ public class ApunteController {
         this.apunteRepository = apunteRepository;
     }
 
-    // Obtener los apuntes de un usuario
+    // GET: Obtener apuntes por ID de usuario
+    // Se conserva para compatibilidad
     @GetMapping("/usuario/{usuarioId}")
     public List<Apunte> obtenerPorUsuario(
             @PathVariable Integer usuarioId) {
@@ -28,7 +31,26 @@ public class ApunteController {
         return apunteRepository.findByUsuarioId(usuarioId);
     }
 
-    // Obtener un apunte por su ID
+    // GET: Obtener apuntes por correo electronico
+    @GetMapping("/usuario/correo/{correo}")
+    public List<Apunte> obtenerPorCorreo(
+            @PathVariable String correo) {
+
+        String correoNormalizado = correo.trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (correoNormalizado.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El correo no puede estar vacio"
+            );
+        }
+
+        return apunteRepository
+                .findByCorreoUsuarioIgnoreCase(correoNormalizado);
+    }
+
+    // GET: Obtener un apunte por ID
     @GetMapping("/{id}")
     public ResponseEntity<Apunte> obtenerPorId(
             @PathVariable Long id) {
@@ -38,16 +60,17 @@ public class ApunteController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Crear un nuevo apunte
+    // POST: Crear un apunte
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Apunte crear(@RequestBody Apunte apunte) {
 
         apunte.setId(null);
+
         return apunteRepository.save(apunte);
     }
 
-    // Editar un apunte existente
+    // PUT: Editar un apunte
     @PutMapping("/{id}")
     public ResponseEntity<Apunte> editar(
             @PathVariable Long id,
@@ -55,6 +78,7 @@ public class ApunteController {
 
         return apunteRepository.findById(id)
                 .map(apunte -> {
+
                     apunte.setMateria(datos.getMateria());
                     apunte.setTitulo(datos.getTitulo());
                     apunte.setContenido(datos.getContenido());
@@ -69,7 +93,7 @@ public class ApunteController {
                 );
     }
 
-    // Eliminar un apunte
+    // DELETE: Eliminar un apunte
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Long id) {
@@ -79,6 +103,7 @@ public class ApunteController {
         }
 
         apunteRepository.deleteById(id);
+
         return ResponseEntity.noContent().build();
     }
 }

@@ -11,13 +11,25 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.util.Locale
 
 class ApunteApiViewModel(
     private val repository: ApunteApiRepository = ApunteApiRepository()
 ) : ViewModel() {
 
-    // Apuntes obtenidos desde Spring Boot
-    private val _apuntes = MutableStateFlow<List<ApiApunte>>(emptyList())
+    // Identificacion de la cuenta conectada
+    private data class CuentaActiva(
+        val usuarioId: Int? = null,
+        val correo: String? = null
+    )
+
+    private var cuentaActiva: CuentaActiva? = null
+
+    // Apuntes del servidor
+    private val _apuntes =
+        MutableStateFlow<List<ApiApunte>>(emptyList())
+
     val apuntes: StateFlow<List<ApiApunte>> = _apuntes
 
     // Estado de carga
@@ -25,37 +37,61 @@ class ApunteApiViewModel(
     val cargando: StateFlow<Boolean> = _cargando
 
     // Mensajes de error
-    private val _mensajeError = MutableStateFlow<String?>(null)
+    private val _mensajeError =
+        MutableStateFlow<String?>(null)
+
     val mensajeError: StateFlow<String?> = _mensajeError
 
-    // Usuario conectado
-    private var usuarioActivo: Int? = null
-
-    // Establecer el usuario actual
+    // Identificacion antigua por ID local
     fun establecerUsuario(usuarioId: Int?) {
-        usuarioActivo = usuarioId
+        actualizarCuenta(
+            usuarioId?.let {
+                CuentaActiva(usuarioId = it)
+            }
+        )
+    }
+
+    // Nueva identificacion por correo
+    fun establecerCorreo(correo: String?) {
+        val correoNormalizado = correo
+            ?.trim()
+            ?.lowercase(Locale.ROOT)
+            ?.takeIf { it.isNotEmpty() }
+
+        actualizarCuenta(
+            correoNormalizado?.let {
+                CuentaActiva(correo = it)
+            }
+        )
+    }
+
+    // Cambiar cuenta activa
+    private fun actualizarCuenta(cuenta: CuentaActiva?) {
+        if (cuentaActiva == cuenta) return
+
+        cuentaActiva = cuenta
 
         _apuntes.value = emptyList()
         _mensajeError.value = null
         _cargando.value = false
 
-        if (usuarioId != null) {
+        if (cuenta != null) {
             cargarApuntes()
         }
     }
 
-    // GET: Obtener apuntes del servidor
+    // GET: Consultar apuntes del servidor
     fun cargarApuntes() {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
 
         viewModelScope.launch {
             _cargando.value = true
             _mensajeError.value = null
 
             try {
-                val resultado = repository.obtenerPorUsuario(usuarioId)
+                val resultado = consultarApuntes(cuenta)
 
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _apuntes.value = resultado
                 }
 
@@ -63,20 +99,38 @@ class ApunteApiViewModel(
                 throw e
 
             } catch (e: Exception) {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _mensajeError.value =
                         "No se pudieron cargar los apuntes del servidor."
                 }
 
             } finally {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _cargando.value = false
                 }
             }
         }
     }
 
-    // POST: Crear un apunte en Spring Boot
+    // Consultar por correo o ID local
+    private suspend fun consultarApuntes(
+        cuenta: CuentaActiva
+    ): List<ApiApunte> {
+
+        return when {
+            cuenta.correo != null -> {
+                repository.obtenerPorCorreo(cuenta.correo)
+            }
+
+            cuenta.usuarioId != null -> {
+                repository.obtenerPorUsuario(cuenta.usuarioId)
+            }
+
+            else -> emptyList()
+        }
+    }
+
+    // POST: Crear apunte
     fun agregarApunte(
         materia: String,
         titulo: String,
@@ -91,29 +145,30 @@ class ApunteApiViewModel(
             return
         }
 
-        ejecutarOperacion { usuarioId ->
+        ejecutarOperacion { cuenta ->
             repository.crear(
                 ApiApunte(
                     materia = materia.trim(),
                     titulo = titulo.trim(),
                     contenido = contenido.trim(),
                     fecha = FechaUtil.hoy(),
-                    usuarioId = usuarioId
+                    usuarioId = cuenta.usuarioId,
+                    correoUsuario = cuenta.correo
                 )
             )
         }
     }
 
-    // PUT: Editar un apunte del servidor
+    // PUT: Editar apunte
     fun editarApunte(
         apunte: ApiApunte,
         nuevoTitulo: String,
         nuevoContenido: String
     ) {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
         val apunteId = apunte.id ?: return
 
-        if (apunte.usuarioId != usuarioId) return
+        if (!perteneceALaCuenta(apunte, cuenta)) return
 
         if (
             Validaciones.validarTituloApunte(nuevoTitulo) != null ||
@@ -135,34 +190,62 @@ class ApunteApiViewModel(
         }
     }
 
-    // DELETE: Eliminar un apunte del servidor
+    // DELETE: Eliminar apunte
     fun eliminarApunte(apunte: ApiApunte) {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
         val apunteId = apunte.id ?: return
 
-        if (apunte.usuarioId != usuarioId) return
+        if (!perteneceALaCuenta(apunte, cuenta)) return
 
         ejecutarOperacion {
-            repository.eliminar(apunteId)
+            val respuesta = repository.eliminar(apunteId)
+
+            if (!respuesta.isSuccessful) {
+                throw HttpException(respuesta)
+            }
         }
     }
 
-    // Ejecutar operaciones y actualizar la lista
+    // Verificacion local del propietario
+    private fun perteneceALaCuenta(
+        apunte: ApiApunte,
+        cuenta: CuentaActiva
+    ): Boolean {
+
+        return when {
+            cuenta.correo != null -> {
+                apunte.correoUsuario
+                    .orEmpty()
+                    .trim()
+                    .equals(cuenta.correo, ignoreCase = true)
+            }
+
+            cuenta.usuarioId != null -> {
+                apunte.usuarioId == cuenta.usuarioId
+            }
+
+            else -> false
+        }
+    }
+
+    // Ejecutar operaciones y actualizar apuntes
     private fun ejecutarOperacion(
-        operacion: suspend (Int) -> Unit
+        operacion: suspend (CuentaActiva) -> Unit
     ) {
-        val usuarioId = usuarioActivo ?: return
+        val cuenta = cuentaActiva ?: return
 
         viewModelScope.launch {
+            if (cuentaActiva != cuenta) return@launch
+
             _cargando.value = true
             _mensajeError.value = null
 
             try {
-                operacion(usuarioId)
+                operacion(cuenta)
 
-                val resultado = repository.obtenerPorUsuario(usuarioId)
+                val resultado = consultarApuntes(cuenta)
 
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _apuntes.value = resultado
                 }
 
@@ -170,13 +253,13 @@ class ApunteApiViewModel(
                 throw e
 
             } catch (e: Exception) {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _mensajeError.value =
-                        "No se pudo completar la operación en el servidor."
+                        "No se pudo completar la operacion en el servidor."
                 }
 
             } finally {
-                if (usuarioActivo == usuarioId) {
+                if (cuentaActiva == cuenta) {
                     _cargando.value = false
                 }
             }

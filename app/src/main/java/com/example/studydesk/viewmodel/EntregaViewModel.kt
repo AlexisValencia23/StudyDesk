@@ -22,7 +22,7 @@ class EntregaViewModel(
     // Identificador de la cuenta activa
     private val usuarioActivo = MutableStateFlow<Int?>(null)
 
-    // Mostrar únicamente las entregas del usuario conectado
+    // Mostrar solo las entregas del usuario conectado
     @OptIn(ExperimentalCoroutinesApi::class)
     val entregas: StateFlow<List<Entrega>> = usuarioActivo
         .flatMapLatest { usuarioId ->
@@ -43,7 +43,7 @@ class EntregaViewModel(
         usuarioActivo.value = usuarioId
     }
 
-    // Crear una entrega
+    // Crear una entrega local en Room
     fun agregarEntrega(
         materia: String,
         titulo: String,
@@ -51,7 +51,6 @@ class EntregaViewModel(
     ) {
         val usuarioId = usuarioActivo.value ?: return
 
-        // Mantener las validaciones existentes
         if (
             Validaciones.validarMateriaEntrega(materia) != null ||
             Validaciones.validarTituloEntrega(titulo) != null ||
@@ -76,7 +75,6 @@ class EntregaViewModel(
     fun eliminarEntrega(entrega: Entrega) {
         val usuarioId = usuarioActivo.value ?: return
 
-        // Comprobar que la entrega pertenece al usuario
         if (entrega.usuarioId != usuarioId) {
             return
         }

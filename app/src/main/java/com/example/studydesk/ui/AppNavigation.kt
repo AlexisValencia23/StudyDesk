@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
@@ -24,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -33,8 +35,10 @@ import com.example.studydesk.model.Apunte
 import com.example.studydesk.model.materialesEstudio
 import com.example.studydesk.notification.Notificaciones
 import com.example.studydesk.util.SesionManager
+import com.example.studydesk.viewmodel.ApunteApiViewModel
 import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.ComentarioViewModel
+import com.example.studydesk.viewmodel.EntregaApiViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
 
@@ -48,7 +52,8 @@ private val pestanas = listOf(
     Pestana("inicio", "Inicio", Icons.Default.Home),
     Pestana("entregas", "Entregas", Icons.Default.DateRange),
     Pestana("apuntes", "Apuntes", Icons.Default.Edit),
-    Pestana("material", "Material", Icons.Default.Folder)
+    Pestana("material", "Material", Icons.Default.Folder),
+    Pestana("servidor", "Servidor", Icons.Default.Cloud)
 )
 
 @Composable
@@ -68,7 +73,7 @@ fun AppNavigation(
     val context = LocalContext.current
     val sesion = remember { SesionManager(context) }
 
-    // Listas de Room
+    // Datos locales de Room
     val entregas by entregaViewModel.entregas.collectAsState()
     val apuntes by apunteViewModel.apuntes.collectAsState()
 
@@ -77,14 +82,14 @@ fun AppNavigation(
         mutableStateOf(sesion.obtenerIdUsuario())
     }
 
-    // Actualizar todos los ViewModels al cambiar de usuario
+    // Actualizar los ViewModels locales
     LaunchedEffect(usuarioIdActivo) {
         apunteViewModel.establecerUsuario(usuarioIdActivo)
         entregaViewModel.establecerUsuario(usuarioIdActivo)
         comentarioViewModel.establecerUsuario(usuarioIdActivo)
     }
 
-    // Mostrar solamente datos propios
+    // Mostrar solamente los datos propios de Room
     val apuntesDelUsuario = apuntes.filter {
         it.usuarioId == usuarioIdActivo
     }
@@ -290,7 +295,7 @@ fun AppNavigation(
                 )
             }
 
-            // ENTREGAS
+            // ENTREGAS LOCALES
             composable("entregas") {
                 Entregas(
                     entregas = entregasDelUsuario,
@@ -309,7 +314,7 @@ fun AppNavigation(
                 )
             }
 
-            // APUNTES
+            // APUNTES LOCALES
             composable("apuntes") {
                 Apuntes(
                     apuntes = apuntesDelUsuario,
@@ -356,7 +361,6 @@ fun AppNavigation(
                     obtenerComentarios =
                         comentarioViewModel::comentarios,
 
-                    // Identificar al autor por su ID
                     usuarioId = usuarioIdActivo,
 
                     onAgregarComentario = {
@@ -378,12 +382,27 @@ fun AppNavigation(
                         )
                     },
 
-                    onEliminarComentario = {
-                            comentario ->
+                    onEliminarComentario = { comentario ->
                         comentarioViewModel.eliminarComentario(
                             comentario
                         )
                     }
+                )
+            }
+
+            // SERVIDOR SPRING BOOT
+            composable("servidor") {
+
+                val apunteApiViewModel:
+                        ApunteApiViewModel = viewModel()
+
+                val entregaApiViewModel:
+                        EntregaApiViewModel = viewModel()
+
+                Servidor(
+                    usuarioId = usuarioIdActivo,
+                    apunteApiViewModel = apunteApiViewModel,
+                    entregaApiViewModel = entregaApiViewModel
                 )
             }
 

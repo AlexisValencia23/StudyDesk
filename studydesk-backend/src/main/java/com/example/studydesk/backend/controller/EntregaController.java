@@ -7,8 +7,10 @@ import com.example.studydesk.backend.repository.EntregaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/entregas")
@@ -20,7 +22,8 @@ public class EntregaController {
         this.entregaRepository = entregaRepository;
     }
 
-    // Obtener las entregas de un usuario
+    // GET: Obtener entregas por ID de usuario
+    // Se mantiene para compatibilidad
     @GetMapping("/usuario/{usuarioId}")
     public List<Entrega> obtenerPorUsuario(
             @PathVariable Integer usuarioId) {
@@ -28,26 +31,48 @@ public class EntregaController {
         return entregaRepository.findByUsuarioId(usuarioId);
     }
 
-    // Obtener una entrega por su ID
+    // GET: Obtener entregas por correo electronico
+    @GetMapping("/usuario/correo/{correo}")
+    public List<Entrega> obtenerPorCorreo(
+            @PathVariable String correo) {
+
+        String correoNormalizado = correo.trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (correoNormalizado.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El correo no puede estar vacio"
+            );
+        }
+
+        return entregaRepository
+                .findByCorreoUsuarioIgnoreCase(correoNormalizado);
+    }
+
+    // GET: Obtener una entrega por ID
     @GetMapping("/{id}")
     public ResponseEntity<Entrega> obtenerPorId(
             @PathVariable Long id) {
 
         return entregaRepository.findById(id)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() ->
+                        ResponseEntity.notFound().build()
+                );
     }
 
-    // Crear una nueva entrega
+    // POST: Crear una entrega
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Entrega crear(@RequestBody Entrega entrega) {
 
         entrega.setId(null);
+
         return entregaRepository.save(entrega);
     }
 
-    // Editar una entrega existente
+    // PUT: Editar una entrega
     @PutMapping("/{id}")
     public ResponseEntity<Entrega> editar(
             @PathVariable Long id,
@@ -55,6 +80,7 @@ public class EntregaController {
 
         return entregaRepository.findById(id)
                 .map(entrega -> {
+
                     entrega.setMateria(datos.getMateria());
                     entrega.setTitulo(datos.getTitulo());
                     entrega.setFecha(datos.getFecha());
@@ -68,7 +94,7 @@ public class EntregaController {
                 );
     }
 
-    // Eliminar una entrega
+    // DELETE: Eliminar una entrega
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Long id) {
@@ -78,6 +104,7 @@ public class EntregaController {
         }
 
         entregaRepository.deleteById(id);
+
         return ResponseEntity.noContent().build();
     }
 }

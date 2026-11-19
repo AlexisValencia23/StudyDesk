@@ -2,6 +2,7 @@
 package com.example.studydesk.backend.model;
 
 import jakarta.persistence.*;
+import java.util.Locale;
 
 @Entity
 @Table(name = "entregas")
@@ -14,7 +15,13 @@ public class Entrega {
     private String materia;
     private String titulo;
     private String fecha;
+
+    // Campo anterior: se conserva por compatibilidad
     private Integer usuarioId;
+
+    // Correo de la cuenta propietaria
+    @Column(name = "correo_usuario", length = 254)
+    private String correoUsuario;
 
     public Entrega() {
     }
@@ -57,5 +64,15 @@ public class Entrega {
 
     public void setUsuarioId(Integer usuarioId) {
         this.usuarioId = usuarioId;
+    }
+
+    public String getCorreoUsuario() {
+        return correoUsuario;
+    }
+
+    public void setCorreoUsuario(String correoUsuario) {
+        this.correoUsuario = correoUsuario == null
+                ? null
+                : correoUsuario.trim().toLowerCase(Locale.ROOT);
     }
 }

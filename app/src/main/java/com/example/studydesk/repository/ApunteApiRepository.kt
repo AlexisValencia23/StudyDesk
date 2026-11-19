@@ -10,28 +10,38 @@ class ApunteApiRepository(
     private val api: StudyDeskApi = RetrofitClient.api
 ) {
 
-    // Obtener apuntes de un usuario
+    // GET: Obtener apuntes por ID local
+    // Se mantiene para compatibilidad
     suspend fun obtenerPorUsuario(
         usuarioId: Int
     ): List<ApiApunte> {
         return api.obtenerApuntes(usuarioId)
     }
 
-    // Obtener un apunte por su ID
+    // GET: Obtener apuntes por correo
+    suspend fun obtenerPorCorreo(
+        correo: String
+    ): List<ApiApunte> {
+        return api.obtenerApuntesPorCorreo(
+            correo.trim()
+        )
+    }
+
+    // GET: Obtener un apunte por su ID
     suspend fun obtenerPorId(
         id: Long
     ): ApiApunte {
         return api.obtenerApunte(id)
     }
 
-    // Guardar un apunte en Spring Boot
+    // POST: Crear un apunte en Spring Boot
     suspend fun crear(
         apunte: ApiApunte
     ): ApiApunte {
         return api.crearApunte(apunte)
     }
 
-    // Editar un apunte en Spring Boot
+    // PUT: Editar un apunte en Spring Boot
     suspend fun editar(
         id: Long,
         apunte: ApiApunte
@@ -39,7 +49,7 @@ class ApunteApiRepository(
         return api.editarApunte(id, apunte)
     }
 
-    // Eliminar un apunte de Spring Boot
+    // DELETE: Eliminar un apunte de Spring Boot
     suspend fun eliminar(
         id: Long
     ): Response<Void> {
