@@ -14,4 +14,8 @@ object RetrofitClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
+
+    val api: StudyDeskApi by lazy {
+        retrofit.create(StudyDeskApi::class.java)
+    }
 }
