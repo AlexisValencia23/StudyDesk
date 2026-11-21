@@ -472,10 +472,27 @@ fun AppNavigation(
                 val entregaApiViewModel:
                         EntregaApiViewModel = viewModel()
 
+                // NUEVO: Estado de sincronizacion pendiente
+                val sincronizandoPendientes by
+                apunteViewModel.sincronizandoPendientes.collectAsState()
+
+                val mensajeSincronizacionPendientes by
+                apunteViewModel.mensajeSincronizacion.collectAsState()
+
                 Servidor(
                     usuarioId = usuarioIdActivo,
                     apunteApiViewModel = apunteApiViewModel,
-                    entregaApiViewModel = entregaApiViewModel
+                    entregaApiViewModel = entregaApiViewModel,
+
+                    // NUEVO: Conectar el boton
+                    onSincronizarPendientes = {
+                        apunteViewModel.sincronizarPendientes()
+                    },
+
+                    sincronizandoPendientes = sincronizandoPendientes,
+
+                    mensajeSincronizacionPendientes =
+                        mensajeSincronizacionPendientes
                 )
             }
 

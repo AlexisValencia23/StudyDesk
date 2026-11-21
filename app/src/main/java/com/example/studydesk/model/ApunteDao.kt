@@ -23,6 +23,17 @@ interface ApunteDao {
         usuarioId: Int
     ): Flow<List<Apunte>>
 
+    // NUEVO: Obtener apuntes pendientes de sincronizacion
+    @Query(
+        "SELECT * FROM apuntes " +
+                "WHERE usuarioId = :usuarioId " +
+                "AND servidorId IS NULL " +
+                "ORDER BY id ASC"
+    )
+    suspend fun obtenerPendientesPorUsuario(
+        usuarioId: Int
+    ): List<Apunte>
+
     // Asociar el ID de Spring Boot con el apunte de Room
     @Query(
         "UPDATE apuntes " +

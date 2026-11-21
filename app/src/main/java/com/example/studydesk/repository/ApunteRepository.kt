@@ -16,6 +16,15 @@ class ApunteRepository(
         return apunteDao.obtenerPorUsuario(usuarioId)
     }
 
+    // NUEVO: Obtener apuntes sin ID del servidor
+    suspend fun obtenerPendientesPorUsuario(
+        usuarioId: Int
+    ): List<Apunte> {
+        return apunteDao.obtenerPendientesPorUsuario(
+            usuarioId
+        )
+    }
+
     // Guardar un apunte en Room y devolver su ID local
     suspend fun agregarApunte(
         apunte: Apunte

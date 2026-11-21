@@ -30,7 +30,12 @@ import com.example.studydesk.viewmodel.EntregaApiViewModel
 fun Servidor(
     usuarioId: Int?,
     apunteApiViewModel: ApunteApiViewModel,
-    entregaApiViewModel: EntregaApiViewModel
+    entregaApiViewModel: EntregaApiViewModel,
+
+    // Nuevos parametros para sincronizar apuntes pendientes
+    onSincronizarPendientes: (() -> Unit)? = null,
+    sincronizandoPendientes: Boolean = false,
+    mensajeSincronizacionPendientes: String? = null
 ) {
 
     val context = LocalContext.current
@@ -69,7 +74,7 @@ fun Servidor(
     val errorEntregas by
     entregaApiViewModel.mensajeError.collectAsState()
 
-    // Consultar por correo cuando cambie la cuenta
+    // Consultar cuando cambie la cuenta
     LaunchedEffect(usuarioId, correoUsuario) {
 
         apunteApiViewModel.establecerCorreo(
@@ -117,7 +122,6 @@ fun Servidor(
 
         } else {
 
-            // Mostrar el correo utilizado en las consultas
             Text(
                 text = "Cuenta: $correoUsuario",
                 style = MaterialTheme.typography.bodyMedium
@@ -139,6 +143,7 @@ fun Servidor(
                         style = MaterialTheme.typography.titleMedium
                     )
 
+                    // Consultar datos que ya estan en Spring Boot
                     Button(
                         onClick = {
                             apunteApiViewModel.cargarApuntes()
@@ -146,6 +151,36 @@ fun Servidor(
                         enabled = !cargandoApuntes
                     ) {
                         Text("Actualizar apuntes")
+                    }
+
+                    // NUEVO: Enviar apuntes pendientes
+                    // Se mostrara cuando conectemos la funcion
+                    // desde AppNavigation.kt
+                    if (onSincronizarPendientes != null) {
+
+                        Button(
+                            onClick = onSincronizarPendientes,
+                            enabled = !sincronizandoPendientes
+                        ) {
+                            Text("Sincronizar pendientes")
+                        }
+
+                        Text(
+                            text = "Envía los apuntes locales pendientes de vinculación con Spring Boot.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        if (sincronizandoPendientes) {
+                            CircularProgressIndicator()
+                        }
+
+                        if (mensajeSincronizacionPendientes != null) {
+
+                            Text(
+                                text = mensajeSincronizacionPendientes,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
 
                     if (cargandoApuntes) {

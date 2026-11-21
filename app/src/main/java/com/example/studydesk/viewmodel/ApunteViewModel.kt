@@ -15,6 +15,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -27,20 +28,22 @@ class ApunteViewModel(
     private val apiRepository: ApunteApiRepository = ApunteApiRepository()
 ) : ViewModel() {
 
-    // Usuario conectado en Room
     private val usuarioActivo = MutableStateFlow<Int?>(null)
-
-    // Correo utilizado para Spring Boot
     private val correoActivo = MutableStateFlow<String?>(null)
 
-    // Resultado de la sincronizacion
     private val _mensajeSincronizacion =
         MutableStateFlow<String?>(null)
 
     val mensajeSincronizacion: StateFlow<String?> =
         _mensajeSincronizacion
 
-    // Mostrar apuntes del usuario conectado
+    // Evitar dos sincronizaciones manuales simultaneas
+    private val _sincronizandoPendientes =
+        MutableStateFlow(false)
+
+    val sincronizandoPendientes: StateFlow<Boolean> =
+        _sincronizandoPendientes
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val apuntes: StateFlow<List<Apunte>> = usuarioActivo
         .flatMapLatest { usuarioId ->
@@ -57,7 +60,6 @@ class ApunteViewModel(
             emptyList()
         )
 
-    // Establecer usuario local
     fun establecerUsuario(usuarioId: Int?) {
 
         if (usuarioActivo.value != usuarioId) {
@@ -68,7 +70,6 @@ class ApunteViewModel(
         usuarioActivo.value = usuarioId
     }
 
-    // Establecer correo del servidor
     fun establecerCorreo(correo: String?) {
 
         if (usuarioActivo.value == null) {
@@ -82,7 +83,7 @@ class ApunteViewModel(
             ?.takeIf { it.isNotEmpty() }
     }
 
-    // Crear apunte en Room y Spring Boot
+    // CREAR APUNTE
     fun agregarApunte(
         materia: String,
         titulo: String,
@@ -112,7 +113,6 @@ class ApunteViewModel(
 
             _mensajeSincronizacion.value = null
 
-            // PASO 1: Guardar en Room
             val idLocal = repository.agregarApunte(nuevoApunte)
 
             Log.d(
@@ -135,7 +135,6 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // PASO 2: Enviar a Spring Boot
             try {
 
                 val apunteServidor = ApiApunte(
@@ -162,7 +161,6 @@ class ApunteViewModel(
                     return@launch
                 }
 
-                // PASO 3: Vincular identificadores
                 val actualizados = repository.guardarServidorId(
                     apunteId = idLocal.toInt(),
                     usuarioId = usuarioId,
@@ -218,7 +216,7 @@ class ApunteViewModel(
         }
     }
 
-    // Editar apunte en Room y Spring Boot
+    // EDITAR APUNTE
     fun editarApunte(
         apunte: Apunte,
         nuevoTitulo: String,
@@ -247,7 +245,6 @@ class ApunteViewModel(
 
             _mensajeSincronizacion.value = null
 
-            // PASO 1: Actualizar Room
             repository.editarApunte(
                 apunte = apunteEditado,
                 usuarioId = usuarioId
@@ -264,11 +261,6 @@ class ApunteViewModel(
 
                 _mensajeSincronizacion.value =
                     "Apunte editado en Room, pero no tiene ID del servidor."
-
-                Log.w(
-                    "StudyDeskSync",
-                    "No se puede sincronizar la edicion: servidorId es null"
-                )
 
                 return@launch
             }
@@ -288,7 +280,6 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // PASO 2: Actualizar Spring Boot
             try {
 
                 val registroServidor =
@@ -366,7 +357,7 @@ class ApunteViewModel(
         }
     }
 
-    // Eliminar apunte de Room y Spring Boot
+    // ELIMINAR APUNTE
     fun eliminarApunte(apunte: Apunte) {
 
         val usuarioId = usuarioActivo.value ?: return
@@ -380,7 +371,6 @@ class ApunteViewModel(
 
             val idServidor = apunte.servidorId
 
-            // Si nunca se vinculo, eliminar solo de Room
             if (idServidor == null) {
 
                 repository.eliminarApunte(
@@ -399,16 +389,10 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // No eliminar el registro local si falta el correo
             if (correo == null) {
 
                 _mensajeSincronizacion.value =
                     "No se pudo eliminar: falta el correo del usuario."
-
-                Log.w(
-                    "StudyDeskSync",
-                    "Eliminacion cancelada: correo no disponible"
-                )
 
                 return@launch
             }
@@ -422,12 +406,10 @@ class ApunteViewModel(
 
             try {
 
-                // PASO 1: Comprobar el registro remoto
                 val registroServidor = try {
                     apiRepository.obtenerPorId(idServidor)
                 } catch (e: HttpException) {
 
-                    // Si ya no existe en Spring Boot, limpiar Room
                     if (e.code() == 404) {
                         null
                     } else {
@@ -437,7 +419,6 @@ class ApunteViewModel(
 
                 if (registroServidor != null) {
 
-                    // Verificar que el correo sea el esperado
                     val correoServidor =
                         registroServidor.correoUsuario
                             ?.trim()
@@ -464,10 +445,10 @@ class ApunteViewModel(
                     return@launch
                 }
 
-                // PASO 2: Eliminar del servidor si existe
                 if (registroServidor != null) {
 
-                    val respuesta = apiRepository.eliminar(idServidor)
+                    val respuesta =
+                        apiRepository.eliminar(idServidor)
 
                     if (
                         !respuesta.isSuccessful &&
@@ -476,11 +457,6 @@ class ApunteViewModel(
 
                         _mensajeSincronizacion.value =
                             "No se pudo eliminar en Spring Boot. Se conservo en Room."
-
-                        Log.w(
-                            "StudyDeskSync",
-                            "Error HTTP al eliminar apunte: ${respuesta.code()}"
-                        )
 
                         return@launch
                     }
@@ -498,7 +474,6 @@ class ApunteViewModel(
                     )
                 }
 
-                // PASO 3: Eliminar de Room
                 repository.eliminarApunte(
                     apunteId = apunte.id,
                     usuarioId = usuarioId
@@ -535,6 +510,218 @@ class ApunteViewModel(
                     "Error al eliminar el apunte",
                     e
                 )
+            }
+        }
+    }
+
+    // NUEVO: SINCRONIZAR APUNTES PENDIENTES
+    fun sincronizarPendientes() {
+
+        val usuarioId = usuarioActivo.value ?: return
+        val correo = correoActivo.value
+
+        if (correo == null) {
+            _mensajeSincronizacion.value =
+                "No se puede sincronizar: falta el correo."
+            return
+        }
+
+        if (_sincronizandoPendientes.value) return
+
+        _sincronizandoPendientes.value = true
+
+        viewModelScope.launch {
+
+            _mensajeSincronizacion.value = null
+
+            try {
+
+                // Obtener registros locales y pendientes
+                val locales =
+                    repository.obtenerPorUsuario(usuarioId).first()
+
+                val pendientes =
+                    repository.obtenerPendientesPorUsuario(usuarioId)
+
+                if (pendientes.isEmpty()) {
+
+                    _mensajeSincronizacion.value =
+                        "No hay apuntes pendientes de sincronizacion."
+
+                    Log.d(
+                        "StudyDeskSync",
+                        "No hay apuntes pendientes"
+                    )
+
+                    return@launch
+                }
+
+                // Consultar primero el servidor
+                val remotos =
+                    apiRepository.obtenerPorCorreo(correo)
+                        .toMutableList()
+
+                // IDs del servidor ya vinculados en Room
+                val idsUtilizados = locales
+                    .mapNotNull { it.servidorId }
+                    .toMutableSet()
+
+                var vinculados = 0
+                var omitidos = 0
+
+                for (apunte in pendientes) {
+
+                    // Detener si cambio la cuenta
+                    if (
+                        usuarioActivo.value != usuarioId ||
+                        correoActivo.value != correo
+                    ) {
+                        return@launch
+                    }
+
+                    // Buscar coincidencias exactas
+                    val coincidencias = remotos.filter {
+                        it.materia == apunte.materia &&
+                                it.titulo == apunte.titulo &&
+                                it.contenido == apunte.contenido &&
+                                it.fecha == apunte.fecha &&
+                                it.correoUsuario
+                                    ?.trim()
+                                    ?.lowercase(Locale.ROOT) == correo
+                    }
+
+                    // Detectar posibles coincidencias parciales
+                    val similares = remotos.filter {
+                        it.materia == apunte.materia &&
+                                it.titulo == apunte.titulo
+                    }
+
+                    val idExistente = coincidencias
+                        .singleOrNull()
+                        ?.id
+
+                    val idServidor = when {
+
+                        // Ya existe una copia unica en el servidor
+                        idExistente != null &&
+                                idExistente !in idsUtilizados -> {
+
+                            Log.d(
+                                "StudyDeskSync",
+                                "Apunte encontrado en servidor. " +
+                                        "Room: ${apunte.id}, " +
+                                        "Spring Boot: $idExistente"
+                            )
+
+                            idExistente
+                        }
+
+                        // Coincidencia ambigua: evitar otra copia
+                        coincidencias.isNotEmpty() ||
+                                similares.isNotEmpty() -> {
+
+                            omitidos++
+
+                            Log.w(
+                                "StudyDeskSync",
+                                "Apunte pendiente de revision: ${apunte.id}"
+                            )
+
+                            continue
+                        }
+
+                        // No existe una coincidencia: crear
+                        else -> {
+
+                            val respuesta = apiRepository.crear(
+                                ApiApunte(
+                                    materia = apunte.materia,
+                                    titulo = apunte.titulo,
+                                    contenido = apunte.contenido,
+                                    fecha = apunte.fecha,
+                                    correoUsuario = correo
+                                )
+                            )
+
+                            remotos.add(respuesta)
+
+                            respuesta.id
+                        }
+                    }
+
+                    if (idServidor == null) {
+
+                        omitidos++
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "No se recibio ID para apunte ${apunte.id}"
+                        )
+
+                        continue
+                    }
+
+                    // Guardar el ID remoto en Room
+                    val actualizados =
+                        repository.guardarServidorId(
+                            apunteId = apunte.id,
+                            usuarioId = usuarioId,
+                            servidorId = idServidor
+                        )
+
+                    if (actualizados == 1) {
+
+                        idsUtilizados.add(idServidor)
+                        vinculados++
+
+                        Log.d(
+                            "StudyDeskSync",
+                            "Pendiente vinculado. " +
+                                    "Room: ${apunte.id}, " +
+                                    "Spring Boot: $idServidor"
+                        )
+
+                    } else {
+
+                        omitidos++
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "No se pudo vincular apunte ${apunte.id}"
+                        )
+                    }
+                }
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "Apuntes vinculados: $vinculados. " +
+                                "Pendientes de revision: $omitidos."
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+
+            } catch (e: Exception) {
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "No se completo la sincronizacion. Revisa la conexion."
+                }
+
+                Log.e(
+                    "StudyDeskSync",
+                    "Error al sincronizar apuntes pendientes",
+                    e
+                )
+
+            } finally {
+                _sincronizandoPendientes.value = false
             }
         }
     }
