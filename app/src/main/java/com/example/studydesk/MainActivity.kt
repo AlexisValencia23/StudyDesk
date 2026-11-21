@@ -18,11 +18,13 @@ import com.example.studydesk.repository.EntregaRepository
 import com.example.studydesk.repository.UsuarioRepository
 import com.example.studydesk.ui.AppNavigation
 import com.example.studydesk.ui.theme.StudyDeskTheme
+import com.example.studydesk.util.IdentificadorSync
 import com.example.studydesk.util.SesionManager
 import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
 import com.example.studydesk.viewmodel.UsuarioViewModel
+
 
 class MainActivity : ComponentActivity() {
 
@@ -34,6 +36,11 @@ class MainActivity : ComponentActivity() {
         )
             .setDriver(BundledSQLiteDriver())
             .build()
+    }
+
+    // Identificador persistente de sincronizacion
+    private val identificadorSync by lazy {
+        IdentificadorSync(applicationContext)
     }
 
     // Usuarios
@@ -51,7 +58,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private val entregaViewModel by lazy {
-        EntregaViewModel(entregaRepository)
+        EntregaViewModel(
+            repository = entregaRepository,
+            identificadorSync = identificadorSync
+        )
     }
 
     // Apuntes
@@ -60,7 +70,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private val apunteViewModel by lazy {
-        ApunteViewModel(apunteRepository)
+        ApunteViewModel(
+            repository = apunteRepository,
+            identificadorSync = identificadorSync
+        )
     }
 
     // Comentarios
@@ -72,7 +85,7 @@ class MainActivity : ComponentActivity() {
         ComentarioViewModel(comentarioRepository)
     }
 
-    // Permiso para notificaciones
+    // Permiso de notificaciones
     private val solicitarPermisoNotificaciones =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -96,11 +109,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // NUEVO: Comprobar pendientes al volver a la aplicacion
+    // Sincronizacion automatica al abrir o regresar a StudyDesk
     override fun onResume() {
         super.onResume()
 
-        // Recuperar la sesion guardada
         val sesion = SesionManager(applicationContext)
 
         val usuarioId = sesion.obtenerIdUsuario()
@@ -109,16 +121,13 @@ class MainActivity : ComponentActivity() {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-        // No sincronizar si no hay una cuenta conectada
         if (usuarioId == null || correo == null) {
             return
         }
 
-        // Preparar la cuenta para los apuntes
         apunteViewModel.establecerUsuario(usuarioId)
         apunteViewModel.establecerCorreo(correo)
 
-        // Preparar la cuenta para las entregas
         entregaViewModel.establecerUsuario(usuarioId)
         entregaViewModel.establecerCorreo(correo)
 
@@ -127,10 +136,7 @@ class MainActivity : ComponentActivity() {
             "Comprobando sincronizacion automatica al abrir StudyDesk"
         )
 
-        // Sincronizar apuntes pendientes
         apunteViewModel.sincronizarPendientes()
-
-        // Sincronizar entregas pendientes
         entregaViewModel.sincronizarPendientes()
     }
 

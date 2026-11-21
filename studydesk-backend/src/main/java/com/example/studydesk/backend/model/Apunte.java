@@ -20,12 +20,21 @@ public class Apunte {
 
     private String fecha;
 
-    // Campo anterior: se conserva por compatibilidad
+    // Campo anterior: compatibilidad
     private Integer usuarioId;
 
-    // Nuevo campo para asociar el apunte al correo
+    // Correo de la cuenta propietaria
     @Column(name = "correo_usuario", length = 254)
     private String correoUsuario;
+
+    // NUEVO: identificador unico de sincronizacion
+    // Puede ser null para los apuntes antiguos
+    @Column(
+            name = "id_cliente",
+            length = 100,
+            unique = true
+    )
+    private String idCliente;
 
     public Apunte() {
     }
@@ -86,5 +95,15 @@ public class Apunte {
         this.correoUsuario = correoUsuario == null
                 ? null
                 : correoUsuario.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public String getIdCliente() {
+        return idCliente;
+    }
+
+    public void setIdCliente(String idCliente) {
+        this.idCliente = idCliente == null
+                ? null
+                : idCliente.trim();
     }
 }

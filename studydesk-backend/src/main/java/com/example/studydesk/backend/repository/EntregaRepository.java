@@ -6,15 +6,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface EntregaRepository extends JpaRepository<Entrega, Long> {
+public interface EntregaRepository
+        extends JpaRepository<Entrega, Long> {
 
-    // Consulta anterior por ID local
-    // Se mantiene para compatibilidad
+    // Consultar entregas por usuario local
     List<Entrega> findByUsuarioId(Integer usuarioId);
 
-    // Nueva consulta por correo del propietario
-    List<Entrega> findByCorreoUsuarioIgnoreCase(String correoUsuario);
+    // Consultar entregas por correo
+    List<Entrega> findByCorreoUsuarioIgnoreCase(
+            String correoUsuario
+    );
 
+    // NUEVO: Buscar una entrega por su ID de sincronizacion
+    Optional<Entrega> findByIdCliente(String idCliente);
 }

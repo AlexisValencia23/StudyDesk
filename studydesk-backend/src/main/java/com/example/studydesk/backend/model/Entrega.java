@@ -16,12 +16,21 @@ public class Entrega {
     private String titulo;
     private String fecha;
 
-    // Campo anterior: se conserva por compatibilidad
+    // Campo anterior: compatibilidad
     private Integer usuarioId;
 
     // Correo de la cuenta propietaria
     @Column(name = "correo_usuario", length = 254)
     private String correoUsuario;
+
+    // NUEVO: identificador unico de sincronizacion
+    // Puede ser null para las entregas antiguas
+    @Column(
+            name = "id_cliente",
+            length = 100,
+            unique = true
+    )
+    private String idCliente;
 
     public Entrega() {
     }
@@ -74,5 +83,15 @@ public class Entrega {
         this.correoUsuario = correoUsuario == null
                 ? null
                 : correoUsuario.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public String getIdCliente() {
+        return idCliente;
+    }
+
+    public void setIdCliente(String idCliente) {
+        this.idCliente = idCliente == null
+                ? null
+                : idCliente.trim();
     }
 }

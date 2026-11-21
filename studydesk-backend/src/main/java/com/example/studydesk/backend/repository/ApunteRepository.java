@@ -6,15 +6,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface ApunteRepository extends JpaRepository<Apunte, Long> {
+public interface ApunteRepository
+        extends JpaRepository<Apunte, Long> {
 
-    // Consulta anterior: por ID local
-    // Se mantiene para compatibilidad
+    // Consultar apuntes por usuario local
     List<Apunte> findByUsuarioId(Integer usuarioId);
 
-    // Nueva consulta: por correo del propietario
-    List<Apunte> findByCorreoUsuarioIgnoreCase(String correoUsuario);
+    // Consultar apuntes por correo
+    List<Apunte> findByCorreoUsuarioIgnoreCase(
+            String correoUsuario
+    );
 
+    // NUEVO: Buscar un apunte por su ID de sincronizacion
+    Optional<Apunte> findByIdCliente(String idCliente);
 }

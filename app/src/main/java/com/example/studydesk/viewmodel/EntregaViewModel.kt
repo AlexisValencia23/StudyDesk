@@ -8,6 +8,7 @@ import com.example.studydesk.model.Entrega
 import com.example.studydesk.network.ApiEntrega
 import com.example.studydesk.repository.EntregaApiRepository
 import com.example.studydesk.repository.EntregaRepository
+import com.example.studydesk.util.IdentificadorSync
 import com.example.studydesk.util.Validaciones
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,34 +25,28 @@ import java.util.Locale
 
 class EntregaViewModel(
     private val repository: EntregaRepository,
-    private val apiRepository: EntregaApiRepository = EntregaApiRepository()
+    private val apiRepository: EntregaApiRepository = EntregaApiRepository(),
+    private val identificadorSync: IdentificadorSync
 ) : ViewModel() {
 
-    // Usuario conectado en Room
     private val usuarioActivo = MutableStateFlow<Int?>(null)
-
-    // Correo para consultar Spring Boot
     private val correoActivo = MutableStateFlow<String?>(null)
 
-    // Mensajes de sincronizacion
     private val _mensajeSincronizacion =
         MutableStateFlow<String?>(null)
 
     val mensajeSincronizacion: StateFlow<String?> =
         _mensajeSincronizacion
 
-    // Estado de sincronizacion de pendientes
     private val _sincronizandoPendientes =
         MutableStateFlow(false)
 
     val sincronizandoPendientes: StateFlow<Boolean> =
         _sincronizandoPendientes
 
-    // Entregas locales del usuario
     @OptIn(ExperimentalCoroutinesApi::class)
     val entregas: StateFlow<List<Entrega>> = usuarioActivo
         .flatMapLatest { usuarioId ->
-
             if (usuarioId == null) {
                 flowOf(emptyList<Entrega>())
             } else {
@@ -64,9 +59,7 @@ class EntregaViewModel(
             emptyList()
         )
 
-    // Establecer usuario activo
     fun establecerUsuario(usuarioId: Int?) {
-
         if (usuarioActivo.value != usuarioId) {
             correoActivo.value = null
             _mensajeSincronizacion.value = null
@@ -75,9 +68,7 @@ class EntregaViewModel(
         usuarioActivo.value = usuarioId
     }
 
-    // Establecer correo activo
     fun establecerCorreo(correo: String?) {
-
         if (usuarioActivo.value == null) {
             correoActivo.value = null
             return
@@ -89,13 +80,20 @@ class EntregaViewModel(
             ?.takeIf { it.isNotEmpty() }
     }
 
+    private fun cuentaActiva(
+        usuarioId: Int,
+        correo: String
+    ): Boolean {
+        return usuarioActivo.value == usuarioId &&
+                correoActivo.value == correo
+    }
+
     // CREAR ENTREGA EN ROOM Y SPRING BOOT
     fun agregarEntrega(
         materia: String,
         titulo: String,
         fecha: String
     ) {
-
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
@@ -115,11 +113,11 @@ class EntregaViewModel(
         )
 
         viewModelScope.launch {
-
             _mensajeSincronizacion.value = null
 
-            // PASO 1: Guardar en Room
             val idLocal = repository.agregarEntrega(nuevaEntrega)
+            val idCliente =
+                identificadorSync.entrega(idLocal.toInt())
 
             Log.d(
                 "StudyDeskSync",
@@ -127,94 +125,78 @@ class EntregaViewModel(
             )
 
             if (correo == null) {
-
                 _mensajeSincronizacion.value =
-                    "Entrega guardada en Room, pero falta el correo del servidor."
-
+                    "Entrega guardada en Room, pero falta el correo."
                 return@launch
             }
 
-            if (
-                usuarioActivo.value != usuarioId ||
-                correoActivo.value != correo
-            ) {
+            if (!cuentaActiva(usuarioId, correo)) {
                 return@launch
             }
 
-            // PASO 2: Crear en Spring Boot
             try {
-
-                val entregaServidor = ApiEntrega(
-                    materia = nuevaEntrega.materia,
-                    titulo = nuevaEntrega.titulo,
-                    fecha = nuevaEntrega.fecha,
-                    correoUsuario = correo
+                val respuesta = apiRepository.crear(
+                    ApiEntrega(
+                        materia = nuevaEntrega.materia,
+                        titulo = nuevaEntrega.titulo,
+                        fecha = nuevaEntrega.fecha,
+                        correoUsuario = correo,
+                        idCliente = idCliente
+                    )
                 )
-
-                val respuesta =
-                    apiRepository.crear(entregaServidor)
 
                 val idServidor = respuesta.id
 
-                if (idServidor == null) {
-
-                    _mensajeSincronizacion.value =
-                        "El servidor recibio la entrega, pero no devolvio su ID."
+                if (
+                    idServidor == null ||
+                    respuesta.idCliente != idCliente ||
+                    respuesta.correoUsuario
+                        ?.trim()
+                        ?.lowercase(Locale.ROOT) != correo
+                ) {
+                    if (cuentaActiva(usuarioId, correo)) {
+                        _mensajeSincronizacion.value =
+                            "La respuesta del servidor necesita revision."
+                    }
 
                     Log.w(
                         "StudyDeskSync",
-                        "Spring Boot no devolvio el ID de la entrega"
+                        "Respuesta no valida para entrega Room: $idLocal"
                     )
-
                     return@launch
                 }
 
-                // PASO 3: Vincular IDs
-                val actualizados =
-                    repository.guardarServidorId(
-                        entregaId = idLocal.toInt(),
-                        usuarioId = usuarioId,
-                        servidorId = idServidor
-                    )
+                if (!cuentaActiva(usuarioId, correo)) {
+                    return@launch
+                }
+
+                val actualizados = repository.guardarServidorId(
+                    entregaId = idLocal.toInt(),
+                    usuarioId = usuarioId,
+                    servidorId = idServidor
+                )
 
                 if (actualizados == 1) {
-
-                    if (
-                        usuarioActivo.value == usuarioId &&
-                        correoActivo.value == correo
-                    ) {
-                        _mensajeSincronizacion.value =
-                            "Entrega guardada y vinculada con Spring Boot."
-                    }
+                    _mensajeSincronizacion.value =
+                        "Entrega guardada y vinculada con Spring Boot."
 
                     Log.d(
                         "StudyDeskSync",
                         "Entrega vinculada. Room: $idLocal, " +
                                 "Spring Boot: $idServidor"
                     )
-
                 } else {
-
                     _mensajeSincronizacion.value =
-                        "Entrega enviada al servidor, pero no se pudo vincular en Room."
-
-                    Log.w(
-                        "StudyDeskSync",
-                        "No se pudo guardar servidorId de la entrega"
-                    )
+                        "Entrega enviada, pero no se pudo vincular en Room."
                 }
 
             } catch (e: CancellationException) {
                 throw e
 
             } catch (e: Exception) {
-
-                if (
-                    usuarioActivo.value == usuarioId &&
-                    correoActivo.value == correo
-                ) {
+                if (cuentaActiva(usuarioId, correo)) {
                     _mensajeSincronizacion.value =
-                        "La entrega se guardo en Room, pero fallo la sincronizacion."
+                        "Entrega guardada en Room. Sincronizacion pendiente."
                 }
 
                 Log.e(
@@ -226,9 +208,8 @@ class EntregaViewModel(
         }
     }
 
-    // ELIMINAR ENTREGA EN ROOM Y SPRING BOOT
+    // ELIMINAR ENTREGA
     fun eliminarEntrega(entrega: Entrega) {
-
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
@@ -237,14 +218,11 @@ class EntregaViewModel(
         }
 
         viewModelScope.launch {
-
             _mensajeSincronizacion.value = null
 
             val idServidor = entrega.servidorId
 
-            // Si no esta vinculada, eliminar solo de Room
             if (idServidor == null) {
-
                 repository.eliminarEntrega(
                     entregaId = entrega.id,
                     usuarioId = usuarioId
@@ -252,45 +230,28 @@ class EntregaViewModel(
 
                 Log.d(
                     "StudyDeskSync",
-                    "Entrega sin servidorId eliminada de Room. ID: ${entrega.id}"
+                    "Entrega local eliminada. Room: ${entrega.id}"
                 )
 
                 _mensajeSincronizacion.value =
                     "Entrega local eliminada."
-
                 return@launch
             }
 
-            // Si esta vinculada, necesitamos el correo
             if (correo == null) {
-
                 _mensajeSincronizacion.value =
-                    "No se pudo eliminar: falta el correo del usuario."
-
-                Log.w(
-                    "StudyDeskSync",
-                    "Eliminacion cancelada: falta el correo"
-                )
-
+                    "No se pudo eliminar: falta el correo."
                 return@launch
             }
 
-            if (
-                usuarioActivo.value != usuarioId ||
-                correoActivo.value != correo
-            ) {
+            if (!cuentaActiva(usuarioId, correo)) {
                 return@launch
             }
 
             try {
-
-                // PASO 1: Consultar registro remoto
                 val registroServidor = try {
-
                     apiRepository.obtenerPorId(idServidor)
-
                 } catch (e: HttpException) {
-
                     if (e.code() == 404) {
                         null
                     } else {
@@ -298,38 +259,24 @@ class EntregaViewModel(
                     }
                 }
 
-                // PASO 2: Verificar correo remoto
                 if (registroServidor != null) {
-
                     val correoServidor =
                         registroServidor.correoUsuario
                             ?.trim()
                             ?.lowercase(Locale.ROOT)
 
                     if (correoServidor != correo) {
-
                         _mensajeSincronizacion.value =
-                            "No se elimino: el registro remoto pertenece a otro correo."
-
-                        Log.w(
-                            "StudyDeskSync",
-                            "Eliminacion cancelada: correo remoto no coincide"
-                        )
-
+                            "No se elimino: el registro pertenece a otro correo."
                         return@launch
                     }
                 }
 
-                if (
-                    usuarioActivo.value != usuarioId ||
-                    correoActivo.value != correo
-                ) {
+                if (!cuentaActiva(usuarioId, correo)) {
                     return@launch
                 }
 
-                // PASO 3: Eliminar del servidor
                 if (registroServidor != null) {
-
                     val respuesta =
                         apiRepository.eliminar(idServidor)
 
@@ -337,59 +284,32 @@ class EntregaViewModel(
                         !respuesta.isSuccessful &&
                         respuesta.code() != 404
                     ) {
-
                         _mensajeSincronizacion.value =
-                            "No se pudo eliminar en Spring Boot. Se conservo en Room."
-
-                        Log.w(
-                            "StudyDeskSync",
-                            "Error HTTP al eliminar entrega: ${respuesta.code()}"
-                        )
-
+                            "No se pudo eliminar en Spring Boot."
                         return@launch
                     }
-
-                    Log.d(
-                        "StudyDeskSync",
-                        "Entrega eliminada en Spring Boot. ID: $idServidor"
-                    )
-
-                } else {
-
-                    Log.w(
-                        "StudyDeskSync",
-                        "La entrega ya no existe en Spring Boot. ID: $idServidor"
-                    )
                 }
 
-                // PASO 4: Eliminar de Room
                 repository.eliminarEntrega(
                     entregaId = entrega.id,
                     usuarioId = usuarioId
                 )
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Entrega eliminada en Room. ID: ${entrega.id}"
-                )
-
-                if (
-                    usuarioActivo.value == usuarioId &&
-                    correoActivo.value == correo
-                ) {
+                if (cuentaActiva(usuarioId, correo)) {
                     _mensajeSincronizacion.value =
                         "Entrega eliminada de Room y Spring Boot."
                 }
+
+                Log.d(
+                    "StudyDeskSync",
+                    "Entrega eliminada. Room: ${entrega.id}"
+                )
 
             } catch (e: CancellationException) {
                 throw e
 
             } catch (e: Exception) {
-
-                if (
-                    usuarioActivo.value == usuarioId &&
-                    correoActivo.value == correo
-                ) {
+                if (cuentaActiva(usuarioId, correo)) {
                     _mensajeSincronizacion.value =
                         "No se completo la eliminacion. Revisa Spring Boot."
                 }
@@ -403,9 +323,8 @@ class EntregaViewModel(
         }
     }
 
-    // NUEVO: SINCRONIZAR ENTREGAS PENDIENTES
+    // SINCRONIZAR ENTREGAS PENDIENTES
     fun sincronizarPendientes() {
-
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
@@ -415,144 +334,157 @@ class EntregaViewModel(
             return
         }
 
-        // Evitar sincronizaciones manuales simultaneas
-        if (_sincronizandoPendientes.value) return
+        if (_sincronizandoPendientes.value) {
+            return
+        }
 
         _sincronizandoPendientes.value = true
 
         viewModelScope.launch {
+            var vinculadas = 0
+            var pendientesRevision = 0
 
             _mensajeSincronizacion.value = null
 
             try {
-
-                // PASO 1: Obtener entregas locales
                 val locales =
                     repository.obtenerPorUsuario(usuarioId).first()
 
-                // PASO 2: Obtener entregas pendientes
                 val pendientes =
                     repository.obtenerPendientesPorUsuario(usuarioId)
 
                 if (pendientes.isEmpty()) {
-
-                    _mensajeSincronizacion.value =
-                        "No hay entregas pendientes de sincronizacion."
+                    if (cuentaActiva(usuarioId, correo)) {
+                        _mensajeSincronizacion.value =
+                            "No hay entregas pendientes de sincronizacion."
+                    }
 
                     Log.d(
                         "StudyDeskSync",
                         "No hay entregas pendientes"
                     )
-
                     return@launch
                 }
 
-                // PASO 3: Consultar el servidor
+                // Primero revisar los datos del servidor
                 val remotas =
                     apiRepository.obtenerPorCorreo(correo)
                         .toMutableList()
 
-                // IDs remotos ya asociados a Room
                 val idsUtilizados = locales
                     .mapNotNull { it.servidorId }
                     .toMutableSet()
 
-                var vinculadas = 0
-                var omitidas = 0
-
                 for (entrega in pendientes) {
-
-                    // Cancelar si cambio la cuenta
-                    if (
-                        usuarioActivo.value != usuarioId ||
-                        correoActivo.value != correo
-                    ) {
+                    if (!cuentaActiva(usuarioId, correo)) {
                         return@launch
                     }
 
-                    // PASO 4: Buscar coincidencias exactas
-                    val coincidencias = remotas.filter {
-                        it.materia == entrega.materia &&
+                    val idCliente =
+                        identificadorSync.entrega(entrega.id)
+
+                    // Buscar por identificador estable
+                    val porIdentificador = remotas.filter {
+                        it.idCliente == idCliente
+                    }
+
+                    if (porIdentificador.size > 1) {
+                        pendientesRevision++
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "Identificador duplicado: $idCliente"
+                        )
+                        continue
+                    }
+
+                    // Compatibilidad con registros antiguos
+                    val antiguas = remotas.filter {
+                        it.idCliente == null &&
+                                it.materia == entrega.materia &&
                                 it.titulo == entrega.titulo &&
                                 it.fecha == entrega.fecha &&
                                 it.correoUsuario
                                     ?.trim()
-                                    ?.lowercase(Locale.ROOT) == correo
+                                    ?.lowercase(Locale.ROOT) == correo &&
+                                it.id !in idsUtilizados
                     }
 
-                    // Detectar posibles duplicados
-                    val similares = remotas.filter {
-                        it.materia == entrega.materia &&
-                                it.titulo == entrega.titulo
-                    }
+                    val respuesta: ApiEntrega
+                    var registroAntiguo = false
 
-                    val idExistente =
-                        coincidencias.singleOrNull()?.id
+                    if (porIdentificador.size == 1) {
+                        // Ya recibido anteriormente
+                        respuesta = porIdentificador.first()
 
-                    val idServidor = when {
+                    } else if (antiguas.size == 1) {
+                        // Posible registro anterior a idCliente
+                        respuesta = antiguas.first()
+                        registroAntiguo = true
 
-                        // Coincidencia unica sin usar
-                        idExistente != null &&
-                                idExistente !in idsUtilizados -> {
-
-                            Log.d(
-                                "StudyDeskSync",
-                                "Entrega encontrada en servidor. " +
-                                        "Room: ${entrega.id}, " +
-                                        "Spring Boot: $idExistente"
-                            )
-
-                            idExistente
-                        }
-
-                        // Hay coincidencias ambiguas:
-                        // no generar otra copia
-                        coincidencias.isNotEmpty() ||
-                                similares.isNotEmpty() -> {
-
-                            omitidas++
-
-                            Log.w(
-                                "StudyDeskSync",
-                                "Entrega pendiente de revision: ${entrega.id}"
-                            )
-
-                            continue
-                        }
-
-                        // No hay coincidencias:
-                        // crear una nueva entrega remota
-                        else -> {
-
-                            val respuesta =
-                                apiRepository.crear(
-                                    ApiEntrega(
-                                        materia = entrega.materia,
-                                        titulo = entrega.titulo,
-                                        fecha = entrega.fecha,
-                                        correoUsuario = correo
-                                    )
-                                )
-
-                            remotas.add(respuesta)
-
-                            respuesta.id
-                        }
-                    }
-
-                    if (idServidor == null) {
-
-                        omitidas++
+                    } else if (antiguas.size > 1) {
+                        pendientesRevision++
 
                         Log.w(
                             "StudyDeskSync",
-                            "No se recibio ID para entrega ${entrega.id}"
+                            "Entrega antigua ambigua. Room: ${entrega.id}"
+                        )
+                        continue
+
+                    } else {
+                        // POST repetido con el mismo idCliente
+                        respuesta = apiRepository.crear(
+                            ApiEntrega(
+                                materia = entrega.materia,
+                                titulo = entrega.titulo,
+                                fecha = entrega.fecha,
+                                correoUsuario = correo,
+                                idCliente = idCliente
+                            )
                         )
 
+                        remotas.add(respuesta)
+                    }
+
+                    val correoServidor = respuesta.correoUsuario
+                        ?.trim()
+                        ?.lowercase(Locale.ROOT)
+
+                    val datosCoinciden =
+                        respuesta.materia == entrega.materia &&
+                                respuesta.titulo == entrega.titulo &&
+                                respuesta.fecha == entrega.fecha
+
+                    val identificadorCorrecto =
+                        if (registroAntiguo) {
+                            respuesta.idCliente == null
+                        } else {
+                            respuesta.idCliente == idCliente
+                        }
+
+                    val idServidor = respuesta.id
+
+                    if (
+                        correoServidor != correo ||
+                        !datosCoinciden ||
+                        !identificadorCorrecto ||
+                        idServidor == null ||
+                        idServidor in idsUtilizados
+                    ) {
+                        pendientesRevision++
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "Entrega pendiente de revision. " +
+                                    "Room: ${entrega.id}"
+                        )
                         continue
                     }
 
-                    // PASO 5: Asociar ID remoto en Room
+                    if (!cuentaActiva(usuarioId, correo)) {
+                        return@launch
+                    }
+
                     val actualizados =
                         repository.guardarServidorId(
                             entregaId = entrega.id,
@@ -561,7 +493,6 @@ class EntregaViewModel(
                         )
 
                     if (actualizados == 1) {
-
                         idsUtilizados.add(idServidor)
                         vinculadas++
 
@@ -571,38 +502,25 @@ class EntregaViewModel(
                                     "Room: ${entrega.id}, " +
                                     "Spring Boot: $idServidor"
                         )
-
                     } else {
-
-                        omitidas++
-
-                        Log.w(
-                            "StudyDeskSync",
-                            "No se pudo vincular entrega ${entrega.id}"
-                        )
+                        pendientesRevision++
                     }
                 }
 
-                if (
-                    usuarioActivo.value == usuarioId &&
-                    correoActivo.value == correo
-                ) {
+                if (cuentaActiva(usuarioId, correo)) {
                     _mensajeSincronizacion.value =
                         "Entregas vinculadas: $vinculadas. " +
-                                "Pendientes de revision: $omitidas."
+                                "Pendientes de revision: $pendientesRevision."
                 }
 
             } catch (e: CancellationException) {
                 throw e
 
             } catch (e: Exception) {
-
-                if (
-                    usuarioActivo.value == usuarioId &&
-                    correoActivo.value == correo
-                ) {
+                if (cuentaActiva(usuarioId, correo)) {
                     _mensajeSincronizacion.value =
-                        "No se completo la sincronizacion de entregas. Revisa la conexion."
+                        "Sincronizacion incompleta. " +
+                                "Vinculadas: $vinculadas. Revisa la conexion."
                 }
 
                 Log.e(
@@ -612,7 +530,6 @@ class EntregaViewModel(
                 )
 
             } finally {
-
                 _sincronizandoPendientes.value = false
             }
         }
