@@ -4,6 +4,7 @@ package com.example.studydesk
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import com.example.studydesk.repository.EntregaRepository
 import com.example.studydesk.repository.UsuarioRepository
 import com.example.studydesk.ui.AppNavigation
 import com.example.studydesk.ui.theme.StudyDeskTheme
+import com.example.studydesk.util.SesionManager
 import com.example.studydesk.viewmodel.ApunteViewModel
 import com.example.studydesk.viewmodel.ComentarioViewModel
 import com.example.studydesk.viewmodel.EntregaViewModel
@@ -24,7 +26,7 @@ import com.example.studydesk.viewmodel.UsuarioViewModel
 
 class MainActivity : ComponentActivity() {
 
-    // Crear la base de datos Room
+    // Base de datos local Room
     private val db by lazy {
         Room.databaseBuilder<AppDatabase>(
             applicationContext,
@@ -70,7 +72,7 @@ class MainActivity : ComponentActivity() {
         ComentarioViewModel(comentarioRepository)
     }
 
-    // Solicitar permiso para las notificaciones
+    // Permiso para notificaciones
     private val solicitarPermisoNotificaciones =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -92,6 +94,44 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    // NUEVO: Comprobar pendientes al volver a la aplicacion
+    override fun onResume() {
+        super.onResume()
+
+        // Recuperar la sesion guardada
+        val sesion = SesionManager(applicationContext)
+
+        val usuarioId = sesion.obtenerIdUsuario()
+
+        val correo = sesion.obtenerCorreoUsuario()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+        // No sincronizar si no hay una cuenta conectada
+        if (usuarioId == null || correo == null) {
+            return
+        }
+
+        // Preparar la cuenta para los apuntes
+        apunteViewModel.establecerUsuario(usuarioId)
+        apunteViewModel.establecerCorreo(correo)
+
+        // Preparar la cuenta para las entregas
+        entregaViewModel.establecerUsuario(usuarioId)
+        entregaViewModel.establecerCorreo(correo)
+
+        Log.d(
+            "StudyDeskSync",
+            "Comprobando sincronizacion automatica al abrir StudyDesk"
+        )
+
+        // Sincronizar apuntes pendientes
+        apunteViewModel.sincronizarPendientes()
+
+        // Sincronizar entregas pendientes
+        entregaViewModel.sincronizarPendientes()
     }
 
     private fun pedirPermisoNotificaciones() {
