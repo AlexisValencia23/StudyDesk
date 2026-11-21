@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.util.Locale
 
 class EntregaViewModel(
@@ -119,7 +120,6 @@ class EntregaViewModel(
                 "Entrega guardada en Room. ID local: $idLocal"
             )
 
-            // Comprobar si existe un correo
             if (correo == null) {
 
                 _mensajeSincronizacion.value =
@@ -164,7 +164,7 @@ class EntregaViewModel(
                     return@launch
                 }
 
-                // PASO 4: Asociar los dos identificadores
+                // PASO 4: Asociar los identificadores
                 val actualizados = repository.guardarServidorId(
                     entregaId = idLocal.toInt(),
                     usuarioId = usuarioId,
@@ -220,22 +220,186 @@ class EntregaViewModel(
         }
     }
 
-    // Eliminar una entrega local
-    // La sincronizacion de eliminacion se implementara despues
+    // Eliminar entrega de Room y Spring Boot
     fun eliminarEntrega(entrega: Entrega) {
 
         val usuarioId = usuarioActivo.value ?: return
+        val correo = correoActivo.value
 
+        // Comprobar que pertenece al usuario local
         if (entrega.usuarioId != usuarioId) {
             return
         }
 
         viewModelScope.launch {
 
-            repository.eliminarEntrega(
-                entregaId = entrega.id,
-                usuarioId = usuarioId
-            )
+            _mensajeSincronizacion.value = null
+
+            val idServidor = entrega.servidorId
+
+            // Si no esta vinculada, eliminar solo de Room
+            if (idServidor == null) {
+
+                repository.eliminarEntrega(
+                    entregaId = entrega.id,
+                    usuarioId = usuarioId
+                )
+
+                Log.d(
+                    "StudyDeskSync",
+                    "Entrega sin servidorId eliminada de Room. ID: ${entrega.id}"
+                )
+
+                _mensajeSincronizacion.value =
+                    "Entrega local eliminada."
+
+                return@launch
+            }
+
+            // Si esta vinculada, necesitamos el correo
+            if (correo == null) {
+
+                _mensajeSincronizacion.value =
+                    "No se pudo eliminar: falta el correo del usuario."
+
+                Log.w(
+                    "StudyDeskSync",
+                    "Eliminacion de entrega cancelada: falta el correo"
+                )
+
+                return@launch
+            }
+
+            // Evitar operaciones con otra cuenta
+            if (
+                usuarioActivo.value != usuarioId ||
+                correoActivo.value != correo
+            ) {
+                return@launch
+            }
+
+            try {
+
+                // PASO 1: Buscar la entrega en Spring Boot
+                val registroServidor = try {
+
+                    apiRepository.obtenerPorId(idServidor)
+
+                } catch (e: HttpException) {
+
+                    // Si ya fue eliminada del servidor,
+                    // podemos limpiar el registro local.
+                    if (e.code() == 404) {
+                        null
+                    } else {
+                        throw e
+                    }
+                }
+
+                // PASO 2: Verificar el correo remoto
+                if (registroServidor != null) {
+
+                    val correoServidor =
+                        registroServidor.correoUsuario
+                            ?.trim()
+                            ?.lowercase(Locale.ROOT)
+
+                    if (correoServidor != correo) {
+
+                        _mensajeSincronizacion.value =
+                            "No se elimino: el registro remoto pertenece a otro correo."
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "Eliminacion cancelada: correo remoto no coincide"
+                        )
+
+                        return@launch
+                    }
+                }
+
+                // Comprobar que seguimos con la misma cuenta
+                if (
+                    usuarioActivo.value != usuarioId ||
+                    correoActivo.value != correo
+                ) {
+                    return@launch
+                }
+
+                // PASO 3: Eliminar de Spring Boot
+                if (registroServidor != null) {
+
+                    val respuesta = apiRepository.eliminar(
+                        idServidor
+                    )
+
+                    if (
+                        !respuesta.isSuccessful &&
+                        respuesta.code() != 404
+                    ) {
+
+                        _mensajeSincronizacion.value =
+                            "No se pudo eliminar en Spring Boot. Se conservo en Room."
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "Error HTTP al eliminar entrega: ${respuesta.code()}"
+                        )
+
+                        return@launch
+                    }
+
+                    Log.d(
+                        "StudyDeskSync",
+                        "Entrega eliminada en Spring Boot. ID: $idServidor"
+                    )
+
+                } else {
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "La entrega ya no existe en Spring Boot. ID: $idServidor"
+                    )
+                }
+
+                // PASO 4: Eliminar de Room
+                repository.eliminarEntrega(
+                    entregaId = entrega.id,
+                    usuarioId = usuarioId
+                )
+
+                Log.d(
+                    "StudyDeskSync",
+                    "Entrega eliminada en Room. ID: ${entrega.id}"
+                )
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "Entrega eliminada de Room y Spring Boot."
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+
+            } catch (e: Exception) {
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "No se completo la eliminacion. Revisa Spring Boot."
+                }
+
+                Log.e(
+                    "StudyDeskSync",
+                    "Error al eliminar la entrega",
+                    e
+                )
+            }
         }
     }
 }
