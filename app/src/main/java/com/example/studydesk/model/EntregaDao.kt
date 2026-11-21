@@ -13,7 +13,7 @@ interface EntregaDao {
     @Insert
     suspend fun insertar(entrega: Entrega): Long
 
-    // Obtener las entregas del usuario conectado
+    // Obtener entregas del usuario conectado
     @Query(
         "SELECT * FROM entregas " +
                 "WHERE usuarioId = :usuarioId " +
@@ -23,7 +23,18 @@ interface EntregaDao {
         usuarioId: Int
     ): Flow<List<Entrega>>
 
-    // Asociar el ID de Spring Boot con la entrega local
+    // Obtener entregas pendientes de sincronizacion
+    @Query(
+        "SELECT * FROM entregas " +
+                "WHERE usuarioId = :usuarioId " +
+                "AND servidorId IS NULL " +
+                "ORDER BY id ASC"
+    )
+    suspend fun obtenerPendientesPorUsuario(
+        usuarioId: Int
+    ): List<Entrega>
+
+    // Guardar el ID de Spring Boot en Room
     @Query(
         "UPDATE entregas " +
                 "SET servidorId = :servidorId " +

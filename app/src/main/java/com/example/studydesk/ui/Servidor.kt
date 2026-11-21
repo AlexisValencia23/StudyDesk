@@ -35,7 +35,14 @@ fun Servidor(
     // Nuevos parametros para sincronizar apuntes pendientes
     onSincronizarPendientes: (() -> Unit)? = null,
     sincronizandoPendientes: Boolean = false,
-    mensajeSincronizacionPendientes: String? = null
+
+    mensajeSincronizacionPendientes: String? = null,
+
+    // Sincronizacion de entregas pendientes
+    onSincronizarEntregasPendientes: (() -> Unit)? = null,
+    sincronizandoEntregasPendientes: Boolean = false,
+    mensajeSincronizacionEntregasPendientes: String? = null
+
 ) {
 
     val context = LocalContext.current
@@ -253,6 +260,36 @@ fun Servidor(
                     ) {
                         Text("Actualizar entregas")
                     }
+
+
+// Sincronizar entregas pendientes de Room
+                    if (onSincronizarEntregasPendientes != null) {
+
+                        Button(
+                            onClick = onSincronizarEntregasPendientes,
+                            enabled = !sincronizandoEntregasPendientes
+                        ) {
+                            Text("Sincronizar entregas pendientes")
+                        }
+
+                        Text(
+                            text = "Envía las entregas locales pendientes a Spring Boot.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        if (sincronizandoEntregasPendientes) {
+                            CircularProgressIndicator()
+                        }
+
+                        if (mensajeSincronizacionEntregasPendientes != null) {
+
+                            Text(
+                                text = mensajeSincronizacionEntregasPendientes,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
 
                     if (cargandoEntregas) {
                         CircularProgressIndicator()

@@ -9,21 +9,30 @@ class EntregaRepository(
     private val entregaDao: EntregaDao
 ) {
 
-    // Obtener las entregas del usuario conectado
+    // Obtener entregas del usuario conectado
     fun obtenerPorUsuario(
         usuarioId: Int
     ): Flow<List<Entrega>> {
         return entregaDao.obtenerPorUsuario(usuarioId)
     }
 
-    // Guardar una entrega en Room y devolver su ID local
+    // Obtener entregas pendientes de sincronizacion
+    suspend fun obtenerPendientesPorUsuario(
+        usuarioId: Int
+    ): List<Entrega> {
+        return entregaDao.obtenerPendientesPorUsuario(
+            usuarioId
+        )
+    }
+
+    // Guardar entrega en Room
     suspend fun agregarEntrega(
         entrega: Entrega
     ): Long {
         return entregaDao.insertar(entrega)
     }
 
-    // Asociar el ID de Spring Boot con la entrega de Room
+    // Vincular entrega local con Spring Boot
     suspend fun guardarServidorId(
         entregaId: Int,
         usuarioId: Int,
@@ -36,7 +45,7 @@ class EntregaRepository(
         )
     }
 
-    // Eliminar solamente entregas del usuario conectado
+    // Eliminar entrega del usuario conectado
     suspend fun eliminarEntrega(
         entregaId: Int,
         usuarioId: Int

@@ -463,7 +463,8 @@ fun AppNavigation(
                 )
             }
 
-            // DATOS DEL SERVIDOR
+
+// DATOS DEL SERVIDOR
             composable("servidor") {
 
                 val apunteApiViewModel:
@@ -472,19 +473,26 @@ fun AppNavigation(
                 val entregaApiViewModel:
                         EntregaApiViewModel = viewModel()
 
-                // NUEVO: Estado de sincronizacion pendiente
+                // Estado de sincronizacion de apuntes
                 val sincronizandoPendientes by
                 apunteViewModel.sincronizandoPendientes.collectAsState()
 
                 val mensajeSincronizacionPendientes by
                 apunteViewModel.mensajeSincronizacion.collectAsState()
 
+                // Estado de sincronizacion de entregas
+                val sincronizandoEntregasPendientes by
+                entregaViewModel.sincronizandoPendientes.collectAsState()
+
+                val mensajeSincronizacionEntregasPendientes by
+                entregaViewModel.mensajeSincronizacion.collectAsState()
+
                 Servidor(
                     usuarioId = usuarioIdActivo,
                     apunteApiViewModel = apunteApiViewModel,
                     entregaApiViewModel = entregaApiViewModel,
 
-                    // NUEVO: Conectar el boton
+                    // Sincronizar apuntes
                     onSincronizarPendientes = {
                         apunteViewModel.sincronizarPendientes()
                     },
@@ -492,9 +500,21 @@ fun AppNavigation(
                     sincronizandoPendientes = sincronizandoPendientes,
 
                     mensajeSincronizacionPendientes =
-                        mensajeSincronizacionPendientes
+                        mensajeSincronizacionPendientes,
+
+                    // Sincronizar entregas
+                    onSincronizarEntregasPendientes = {
+                        entregaViewModel.sincronizarPendientes()
+                    },
+
+                    sincronizandoEntregasPendientes =
+                        sincronizandoEntregasPendientes,
+
+                    mensajeSincronizacionEntregasPendientes =
+                        mensajeSincronizacionEntregasPendientes
                 )
             }
+
 
             // VISOR PDF
             composable("visor/{archivo}") { entrada ->
