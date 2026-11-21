@@ -91,7 +91,6 @@ class ApunteViewModel(
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
-        // Validar los campos
         if (
             Validaciones.validarMateriaApunte(materia) != null ||
             Validaciones.validarTituloApunte(titulo) != null ||
@@ -100,7 +99,6 @@ class ApunteViewModel(
             return
         }
 
-        // Preparar el apunte local
         val nuevoApunte = Apunte(
             materia = materia.trim(),
             titulo = titulo.trim(),
@@ -113,7 +111,7 @@ class ApunteViewModel(
 
             _mensajeSincronizacion.value = null
 
-            // PASO 1: Guardar en Room y obtener el ID local
+            // PASO 1: Guardar en Room
             val idLocal = repository.agregarApunte(nuevoApunte)
 
             Log.d(
@@ -121,7 +119,6 @@ class ApunteViewModel(
                 "Apunte guardado en Room. ID local: $idLocal"
             )
 
-            // Comprobar que existe un correo
             if (correo == null) {
 
                 _mensajeSincronizacion.value =
@@ -130,7 +127,6 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // Evitar enviar datos si cambio la cuenta
             if (
                 usuarioActivo.value != usuarioId ||
                 correoActivo.value != correo
@@ -138,7 +134,7 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // PASO 2: Crear el apunte en Spring Boot
+            // PASO 2: Enviar a Spring Boot
             try {
 
                 val apunteServidor = ApiApunte(
@@ -151,7 +147,6 @@ class ApunteViewModel(
 
                 val respuesta = apiRepository.crear(apunteServidor)
 
-                // PASO 3: Recuperar el ID del servidor
                 val idServidor = respuesta.id
 
                 if (idServidor == null) {
@@ -167,7 +162,7 @@ class ApunteViewModel(
                     return@launch
                 }
 
-                // PASO 4: Asociar ambos identificadores
+                // PASO 3: Vincular identificadores
                 val actualizados = repository.guardarServidorId(
                     apunteId = idLocal.toInt(),
                     usuarioId = usuarioId,
@@ -223,7 +218,7 @@ class ApunteViewModel(
         }
     }
 
-    // Editar apunte local
+    // Editar apunte en Room y Spring Boot
     fun editarApunte(
         apunte: Apunte,
         nuevoTitulo: String,
@@ -231,7 +226,9 @@ class ApunteViewModel(
     ) {
 
         val usuarioId = usuarioActivo.value ?: return
+        val correo = correoActivo.value
 
+        // Verificar que el apunte pertenece al usuario local
         if (apunte.usuarioId != usuarioId) return
 
         if (
@@ -241,20 +238,139 @@ class ApunteViewModel(
             return
         }
 
+        val apunteEditado = apunte.copy(
+            titulo = nuevoTitulo.trim(),
+            contenido = nuevoContenido.trim(),
+            fecha = FechaUtil.hoy()
+        )
+
         viewModelScope.launch {
 
+            _mensajeSincronizacion.value = null
+
+            // PASO 1: Actualizar Room
             repository.editarApunte(
-                apunte.copy(
-                    titulo = nuevoTitulo.trim(),
-                    contenido = nuevoContenido.trim(),
-                    fecha = FechaUtil.hoy()
-                ),
-                usuarioId
+                apunte = apunteEditado,
+                usuarioId = usuarioId
             )
+
+            Log.d(
+                "StudyDeskSync",
+                "Apunte editado correctamente en Room. ID: ${apunte.id}"
+            )
+
+            // PASO 2: Comprobar vinculacion con Spring Boot
+            val idServidor = apunte.servidorId
+
+            if (idServidor == null) {
+
+                _mensajeSincronizacion.value =
+                    "Apunte editado en Room, pero no tiene ID del servidor."
+
+                Log.w(
+                    "StudyDeskSync",
+                    "No se puede sincronizar la edicion: servidorId es null"
+                )
+
+                return@launch
+            }
+
+            if (correo == null) {
+
+                _mensajeSincronizacion.value =
+                    "Apunte editado en Room, pero falta el correo."
+
+                return@launch
+            }
+
+            // Evitar trabajar con otra cuenta
+            if (
+                usuarioActivo.value != usuarioId ||
+                correoActivo.value != correo
+            ) {
+                return@launch
+            }
+
+            // PASO 3: Actualizar Spring Boot
+            try {
+
+                // Verificar a que correo pertenece el registro remoto
+                val registroServidor =
+                    apiRepository.obtenerPorId(idServidor)
+
+                val correoServidor = registroServidor.correoUsuario
+                    ?.trim()
+                    ?.lowercase(Locale.ROOT)
+
+                if (correoServidor != correo) {
+
+                    _mensajeSincronizacion.value =
+                        "El apunte se edito en Room, pero el registro remoto no coincide con la cuenta."
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "Edicion cancelada: correo del servidor no coincide"
+                    )
+
+                    return@launch
+                }
+
+                if (
+                    usuarioActivo.value != usuarioId ||
+                    correoActivo.value != correo
+                ) {
+                    return@launch
+                }
+
+                val datosActualizados = ApiApunte(
+                    materia = apunteEditado.materia,
+                    titulo = apunteEditado.titulo,
+                    contenido = apunteEditado.contenido,
+                    fecha = apunteEditado.fecha,
+                    correoUsuario = correo
+                )
+
+                apiRepository.editar(
+                    id = idServidor,
+                    apunte = datosActualizados
+                )
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "Apunte editado en Room y Spring Boot."
+                }
+
+                Log.d(
+                    "StudyDeskSync",
+                    "Apunte editado en Spring Boot. ID: $idServidor"
+                )
+
+            } catch (e: CancellationException) {
+                throw e
+
+            } catch (e: Exception) {
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "Apunte editado en Room, pero fallo la actualizacion en Spring Boot."
+                }
+
+                Log.e(
+                    "StudyDeskSync",
+                    "Error al editar el apunte en Spring Boot",
+                    e
+                )
+            }
         }
     }
 
-    // Eliminar apunte local
+    // Eliminar apunte local (se sincronizara despues)
     fun eliminarApunte(apunte: Apunte) {
 
         val usuarioId = usuarioActivo.value ?: return
