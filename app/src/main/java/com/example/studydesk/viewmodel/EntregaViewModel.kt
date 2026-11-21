@@ -26,21 +26,19 @@ class EntregaViewModel(
 ) : ViewModel() {
 
     // Usuario conectado en Room
-    private val usuarioActivo =
-        MutableStateFlow<Int?>(null)
+    private val usuarioActivo = MutableStateFlow<Int?>(null)
 
     // Correo utilizado para Spring Boot
-    private val correoActivo =
-        MutableStateFlow<String?>(null)
+    private val correoActivo = MutableStateFlow<String?>(null)
 
-    // Mensajes sobre el guardado en el servidor
+    // Resultado de la sincronizacion
     private val _mensajeSincronizacion =
         MutableStateFlow<String?>(null)
 
     val mensajeSincronizacion: StateFlow<String?> =
         _mensajeSincronizacion
 
-    // Mostrar solo entregas del usuario conectado
+    // Mostrar entregas del usuario conectado
     @OptIn(ExperimentalCoroutinesApi::class)
     val entregas: StateFlow<List<Entrega>> = usuarioActivo
         .flatMapLatest { usuarioId ->
@@ -82,7 +80,7 @@ class EntregaViewModel(
             ?.takeIf { it.isNotEmpty() }
     }
 
-    // Crear entrega en Room y Spring Boot
+    // Crear una entrega en Room y Spring Boot
     fun agregarEntrega(
         materia: String,
         titulo: String,
@@ -92,7 +90,7 @@ class EntregaViewModel(
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
-        // Validar los datos
+        // Validar los campos
         if (
             Validaciones.validarMateriaEntrega(materia) != null ||
             Validaciones.validarTituloEntrega(titulo) != null ||
@@ -101,7 +99,7 @@ class EntregaViewModel(
             return
         }
 
-        // Crear la entrega una sola vez
+        // Preparar la entrega local
         val nuevaEntrega = Entrega(
             materia = materia.trim(),
             titulo = titulo.trim(),
@@ -114,23 +112,23 @@ class EntregaViewModel(
             _mensajeSincronizacion.value = null
 
             // PASO 1: Guardar en Room
-            repository.agregarEntrega(nuevaEntrega)
+            val idLocal = repository.agregarEntrega(nuevaEntrega)
 
             Log.d(
                 "StudyDeskSync",
-                "Entrega guardada correctamente en Room"
+                "Entrega guardada en Room. ID local: $idLocal"
             )
 
-            // Comprobar que existe un correo
+            // Comprobar si existe un correo
             if (correo == null) {
 
                 _mensajeSincronizacion.value =
-                    "Entrega guardada en Room, pero falta el correo para el servidor."
+                    "Entrega guardada en Room, pero falta el correo del servidor."
 
                 return@launch
             }
 
-            // Evitar enviar datos si cambio la cuenta
+            // Evitar enviar si cambio la cuenta
             if (
                 usuarioActivo.value != usuarioId ||
                 correoActivo.value != correo
@@ -138,7 +136,7 @@ class EntregaViewModel(
                 return@launch
             }
 
-            // PASO 2: Enviar copia a Spring Boot
+            // PASO 2: Crear entrega en Spring Boot
             try {
 
                 val entregaServidor = ApiEntrega(
@@ -148,20 +146,57 @@ class EntregaViewModel(
                     correoUsuario = correo
                 )
 
-                apiRepository.crear(entregaServidor)
+                val respuesta = apiRepository.crear(entregaServidor)
 
-                if (
-                    usuarioActivo.value == usuarioId &&
-                    correoActivo.value == correo
-                ) {
+                // PASO 3: Obtener identificador del servidor
+                val idServidor = respuesta.id
+
+                if (idServidor == null) {
+
                     _mensajeSincronizacion.value =
-                        "Entrega guardada en Room y Spring Boot."
+                        "El servidor recibio la entrega, pero no devolvio su ID."
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "Spring Boot no devolvio el ID de la entrega"
+                    )
+
+                    return@launch
                 }
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Entrega guardada correctamente en Spring Boot"
+                // PASO 4: Asociar los dos identificadores
+                val actualizados = repository.guardarServidorId(
+                    entregaId = idLocal.toInt(),
+                    usuarioId = usuarioId,
+                    servidorId = idServidor
                 )
+
+                if (actualizados == 1) {
+
+                    if (
+                        usuarioActivo.value == usuarioId &&
+                        correoActivo.value == correo
+                    ) {
+                        _mensajeSincronizacion.value =
+                            "Entrega guardada y vinculada con Spring Boot."
+                    }
+
+                    Log.d(
+                        "StudyDeskSync",
+                        "Entrega vinculada. Room: $idLocal, " +
+                                "Spring Boot: $idServidor"
+                    )
+
+                } else {
+
+                    _mensajeSincronizacion.value =
+                        "Entrega enviada al servidor, pero no se pudo vincular en Room."
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "No se pudo guardar servidorId de la entrega en Room"
+                    )
+                }
 
             } catch (e: CancellationException) {
                 throw e
@@ -173,19 +208,20 @@ class EntregaViewModel(
                     correoActivo.value == correo
                 ) {
                     _mensajeSincronizacion.value =
-                        "La entrega se guardo en Room, pero no pudo enviarse al servidor."
+                        "La entrega se guardo en Room, pero fallo la sincronizacion."
                 }
 
                 Log.e(
                     "StudyDeskSync",
-                    "Error al guardar la entrega en Spring Boot",
+                    "Error al sincronizar la entrega",
                     e
                 )
             }
         }
     }
 
-    // Eliminar solamente una entrega propia de Room
+    // Eliminar una entrega local
+    // La sincronizacion de eliminacion se implementara despues
     fun eliminarEntrega(entrega: Entrega) {
 
         val usuarioId = usuarioActivo.value ?: return
