@@ -9,17 +9,34 @@ class ApunteRepository(
     private val apunteDao: ApunteDao
 ) {
 
-    // Obtener apuntes de una cuenta
-    fun obtenerPorUsuario(usuarioId: Int): Flow<List<Apunte>> {
+    // Obtener los apuntes del usuario conectado
+    fun obtenerPorUsuario(
+        usuarioId: Int
+    ): Flow<List<Apunte>> {
         return apunteDao.obtenerPorUsuario(usuarioId)
     }
 
-    // Guardar apunte
-    suspend fun agregarApunte(apunte: Apunte) {
-        apunteDao.insertar(apunte)
+    // Guardar un apunte en Room y devolver su ID local
+    suspend fun agregarApunte(
+        apunte: Apunte
+    ): Long {
+        return apunteDao.insertar(apunte)
     }
 
-    // Editar solamente apuntes propios
+    // Asociar el ID de Spring Boot al apunte de Room
+    suspend fun guardarServidorId(
+        apunteId: Int,
+        usuarioId: Int,
+        servidorId: Long
+    ): Int {
+        return apunteDao.guardarServidorId(
+            apunteId = apunteId,
+            usuarioId = usuarioId,
+            servidorId = servidorId
+        )
+    }
+
+    // Editar solamente apuntes del usuario conectado
     suspend fun editarApunte(
         apunte: Apunte,
         usuarioId: Int
@@ -33,7 +50,7 @@ class ApunteRepository(
         )
     }
 
-    // Eliminar solamente apuntes propios
+    // Eliminar solamente apuntes del usuario conectado
     suspend fun eliminarApunte(
         apunteId: Int,
         usuarioId: Int

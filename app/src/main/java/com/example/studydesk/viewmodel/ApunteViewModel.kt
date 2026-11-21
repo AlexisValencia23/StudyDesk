@@ -26,20 +26,20 @@ class ApunteViewModel(
     private val apiRepository: ApunteApiRepository = ApunteApiRepository()
 ) : ViewModel() {
 
-    // Usuario conectado
+    // Usuario conectado en Room
     private val usuarioActivo = MutableStateFlow<Int?>(null)
 
-    // Correo utilizado para el servidor
+    // Correo utilizado para Spring Boot
     private val correoActivo = MutableStateFlow<String?>(null)
 
-    // Resultado del guardado en el servidor
+    // Resultado de la sincronizacion
     private val _mensajeSincronizacion =
         MutableStateFlow<String?>(null)
 
     val mensajeSincronizacion: StateFlow<String?> =
         _mensajeSincronizacion
 
-    // Apuntes guardados en Room
+    // Mostrar apuntes del usuario conectado
     @OptIn(ExperimentalCoroutinesApi::class)
     val apuntes: StateFlow<List<Apunte>> = usuarioActivo
         .flatMapLatest { usuarioId ->
@@ -67,7 +67,7 @@ class ApunteViewModel(
         usuarioActivo.value = usuarioId
     }
 
-    // Establecer correo para Spring Boot
+    // Establecer correo del servidor
     fun establecerCorreo(correo: String?) {
 
         if (usuarioActivo.value == null) {
@@ -81,16 +81,17 @@ class ApunteViewModel(
             ?.takeIf { it.isNotEmpty() }
     }
 
-    // Crear apunte local y enviarlo al servidor
+    // Crear apunte en Room y Spring Boot
     fun agregarApunte(
         materia: String,
         titulo: String,
         contenido: String
     ) {
+
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
-        // Validaciones
+        // Validar los campos
         if (
             Validaciones.validarMateriaApunte(materia) != null ||
             Validaciones.validarTituloApunte(titulo) != null ||
@@ -99,7 +100,7 @@ class ApunteViewModel(
             return
         }
 
-        // Crear los datos una sola vez
+        // Preparar el apunte local
         val nuevoApunte = Apunte(
             materia = materia.trim(),
             titulo = titulo.trim(),
@@ -112,24 +113,32 @@ class ApunteViewModel(
 
             _mensajeSincronizacion.value = null
 
-            // PASO 1: Guardar localmente en Room
-            repository.agregarApunte(nuevoApunte)
+            // PASO 1: Guardar en Room y obtener el ID local
+            val idLocal = repository.agregarApunte(nuevoApunte)
 
             Log.d(
                 "StudyDeskSync",
-                "Apunte guardado correctamente en Room"
+                "Apunte guardado en Room. ID local: $idLocal"
             )
 
-            // Comprobar que tenemos correo
+            // Comprobar que existe un correo
             if (correo == null) {
 
                 _mensajeSincronizacion.value =
-                    "Guardado en Room, pero falta el correo para enviarlo al servidor."
+                    "Apunte guardado en Room, pero falta el correo del servidor."
 
                 return@launch
             }
 
-            // PASO 2: Enviar una copia a Spring Boot
+            // Evitar enviar datos si cambio la cuenta
+            if (
+                usuarioActivo.value != usuarioId ||
+                correoActivo.value != correo
+            ) {
+                return@launch
+            }
+
+            // PASO 2: Crear el apunte en Spring Boot
             try {
 
                 val apunteServidor = ApiApunte(
@@ -140,27 +149,74 @@ class ApunteViewModel(
                     correoUsuario = correo
                 )
 
-                apiRepository.crear(apunteServidor)
+                val respuesta = apiRepository.crear(apunteServidor)
 
-                _mensajeSincronizacion.value =
-                    "Apunte guardado en Room y Spring Boot."
+                // PASO 3: Recuperar el ID del servidor
+                val idServidor = respuesta.id
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Apunte guardado correctamente en Spring Boot"
+                if (idServidor == null) {
+
+                    _mensajeSincronizacion.value =
+                        "El servidor recibio el apunte, pero no devolvio su ID."
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "Spring Boot no devolvio el ID del apunte"
+                    )
+
+                    return@launch
+                }
+
+                // PASO 4: Asociar ambos identificadores
+                val actualizados = repository.guardarServidorId(
+                    apunteId = idLocal.toInt(),
+                    usuarioId = usuarioId,
+                    servidorId = idServidor
                 )
+
+                if (actualizados == 1) {
+
+                    if (
+                        usuarioActivo.value == usuarioId &&
+                        correoActivo.value == correo
+                    ) {
+                        _mensajeSincronizacion.value =
+                            "Apunte guardado y vinculado con Spring Boot."
+                    }
+
+                    Log.d(
+                        "StudyDeskSync",
+                        "Apunte vinculado. Room: $idLocal, " +
+                                "Spring Boot: $idServidor"
+                    )
+
+                } else {
+
+                    _mensajeSincronizacion.value =
+                        "Apunte enviado al servidor, pero no se pudo vincular en Room."
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "No se pudo guardar servidorId en Room"
+                    )
+                }
 
             } catch (e: CancellationException) {
                 throw e
 
             } catch (e: Exception) {
 
-                _mensajeSincronizacion.value =
-                    "El apunte se guardo en Room, pero no pudo enviarse al servidor."
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "El apunte se guardo en Room, pero fallo la sincronizacion."
+                }
 
                 Log.e(
                     "StudyDeskSync",
-                    "Error al guardar el apunte en Spring Boot",
+                    "Error al sincronizar el apunte",
                     e
                 )
             }
@@ -173,6 +229,7 @@ class ApunteViewModel(
         nuevoTitulo: String,
         nuevoContenido: String
     ) {
+
         val usuarioId = usuarioActivo.value ?: return
 
         if (apunte.usuarioId != usuarioId) return
