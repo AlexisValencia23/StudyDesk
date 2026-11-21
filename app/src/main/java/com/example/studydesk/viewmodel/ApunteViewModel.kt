@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.util.Locale
 
 class ApunteViewModel(
@@ -146,7 +147,6 @@ class ApunteViewModel(
                 )
 
                 val respuesta = apiRepository.crear(apunteServidor)
-
                 val idServidor = respuesta.id
 
                 if (idServidor == null) {
@@ -228,7 +228,6 @@ class ApunteViewModel(
         val usuarioId = usuarioActivo.value ?: return
         val correo = correoActivo.value
 
-        // Verificar que el apunte pertenece al usuario local
         if (apunte.usuarioId != usuarioId) return
 
         if (
@@ -259,7 +258,6 @@ class ApunteViewModel(
                 "Apunte editado correctamente en Room. ID: ${apunte.id}"
             )
 
-            // PASO 2: Comprobar vinculacion con Spring Boot
             val idServidor = apunte.servidorId
 
             if (idServidor == null) {
@@ -283,7 +281,6 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // Evitar trabajar con otra cuenta
             if (
                 usuarioActivo.value != usuarioId ||
                 correoActivo.value != correo
@@ -291,10 +288,9 @@ class ApunteViewModel(
                 return@launch
             }
 
-            // PASO 3: Actualizar Spring Boot
+            // PASO 2: Actualizar Spring Boot
             try {
 
-                // Verificar a que correo pertenece el registro remoto
                 val registroServidor =
                     apiRepository.obtenerPorId(idServidor)
 
@@ -305,7 +301,7 @@ class ApunteViewModel(
                 if (correoServidor != correo) {
 
                     _mensajeSincronizacion.value =
-                        "El apunte se edito en Room, pero el registro remoto no coincide con la cuenta."
+                        "El registro remoto no coincide con la cuenta."
 
                     Log.w(
                         "StudyDeskSync",
@@ -370,19 +366,176 @@ class ApunteViewModel(
         }
     }
 
-    // Eliminar apunte local (se sincronizara despues)
+    // Eliminar apunte de Room y Spring Boot
     fun eliminarApunte(apunte: Apunte) {
 
         val usuarioId = usuarioActivo.value ?: return
+        val correo = correoActivo.value
 
         if (apunte.usuarioId != usuarioId) return
 
         viewModelScope.launch {
 
-            repository.eliminarApunte(
-                apunteId = apunte.id,
-                usuarioId = usuarioId
-            )
+            _mensajeSincronizacion.value = null
+
+            val idServidor = apunte.servidorId
+
+            // Si nunca se vinculo, eliminar solo de Room
+            if (idServidor == null) {
+
+                repository.eliminarApunte(
+                    apunteId = apunte.id,
+                    usuarioId = usuarioId
+                )
+
+                Log.d(
+                    "StudyDeskSync",
+                    "Apunte sin servidorId eliminado de Room. ID: ${apunte.id}"
+                )
+
+                _mensajeSincronizacion.value =
+                    "Apunte local eliminado."
+
+                return@launch
+            }
+
+            // No eliminar el registro local si falta el correo
+            if (correo == null) {
+
+                _mensajeSincronizacion.value =
+                    "No se pudo eliminar: falta el correo del usuario."
+
+                Log.w(
+                    "StudyDeskSync",
+                    "Eliminacion cancelada: correo no disponible"
+                )
+
+                return@launch
+            }
+
+            if (
+                usuarioActivo.value != usuarioId ||
+                correoActivo.value != correo
+            ) {
+                return@launch
+            }
+
+            try {
+
+                // PASO 1: Comprobar el registro remoto
+                val registroServidor = try {
+                    apiRepository.obtenerPorId(idServidor)
+                } catch (e: HttpException) {
+
+                    // Si ya no existe en Spring Boot, limpiar Room
+                    if (e.code() == 404) {
+                        null
+                    } else {
+                        throw e
+                    }
+                }
+
+                if (registroServidor != null) {
+
+                    // Verificar que el correo sea el esperado
+                    val correoServidor =
+                        registroServidor.correoUsuario
+                            ?.trim()
+                            ?.lowercase(Locale.ROOT)
+
+                    if (correoServidor != correo) {
+
+                        _mensajeSincronizacion.value =
+                            "No se elimino: el registro remoto pertenece a otro correo."
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "Eliminacion cancelada: correo no coincide"
+                        )
+
+                        return@launch
+                    }
+                }
+
+                if (
+                    usuarioActivo.value != usuarioId ||
+                    correoActivo.value != correo
+                ) {
+                    return@launch
+                }
+
+                // PASO 2: Eliminar del servidor si existe
+                if (registroServidor != null) {
+
+                    val respuesta = apiRepository.eliminar(idServidor)
+
+                    if (
+                        !respuesta.isSuccessful &&
+                        respuesta.code() != 404
+                    ) {
+
+                        _mensajeSincronizacion.value =
+                            "No se pudo eliminar en Spring Boot. Se conservo en Room."
+
+                        Log.w(
+                            "StudyDeskSync",
+                            "Error HTTP al eliminar apunte: ${respuesta.code()}"
+                        )
+
+                        return@launch
+                    }
+
+                    Log.d(
+                        "StudyDeskSync",
+                        "Apunte eliminado en Spring Boot. ID: $idServidor"
+                    )
+
+                } else {
+
+                    Log.w(
+                        "StudyDeskSync",
+                        "El apunte ya no existe en Spring Boot. ID: $idServidor"
+                    )
+                }
+
+                // PASO 3: Eliminar de Room
+                repository.eliminarApunte(
+                    apunteId = apunte.id,
+                    usuarioId = usuarioId
+                )
+
+                Log.d(
+                    "StudyDeskSync",
+                    "Apunte eliminado en Room. ID: ${apunte.id}"
+                )
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "Apunte eliminado de Room y Spring Boot."
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+
+            } catch (e: Exception) {
+
+                if (
+                    usuarioActivo.value == usuarioId &&
+                    correoActivo.value == correo
+                ) {
+                    _mensajeSincronizacion.value =
+                        "No se completo la eliminacion. Revisa la conexion con Spring Boot."
+                }
+
+                Log.e(
+                    "StudyDeskSync",
+                    "Error al eliminar el apunte",
+                    e
+                )
+            }
         }
     }
 }
