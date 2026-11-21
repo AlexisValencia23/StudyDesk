@@ -1,66 +1,75 @@
 # StudyDesk
 
-**Aplicación Android para organizar entregas y apuntes, consultar material jurídico y compartir comentarios.**  
-Proyecto académico de **Desarrollo de Aplicaciones Móviles (DSY1105), Duoc UC — caso 13**.
+**Aplicación Android para organizar actividades académicas, gestionar apuntes y consultar material de estudio jurídico.**
 
-## Guía rápida para mostrar el proyecto al profesor
+Proyecto desarrollado para **Desarrollo de Aplicaciones Móviles (DSY1105), Duoc UC — caso 13**. Integra una aplicación nativa en **Kotlin y Jetpack Compose**, persistencia local con **Room** y una API REST construida con **Spring Boot y H2**.
 
-> **Importante:** los siguientes comandos están pensados para **Windows PowerShell**, con el proyecto ya descargado. **Ejecuta Spring Boot desde `studydesk-backend`** para abrir la base H2 correcta. No borres la carpeta `data`.
+## Inicio rápido
 
-### 1. Encender Spring Boot y habilitar la consola H2
+Estos comandos permiten iniciar la aplicación, consultar las tablas del servidor y ejecutar las pruebas del proyecto.
 
-Abre PowerShell desde la carpeta principal de StudyDesk y ejecuta:
+### 1. Iniciar el backend
+
+**Requisitos:** JDK 21, Windows y PowerShell. Abrir una terminal en la **carpeta principal del repositorio** y ejecutar:
 
 ```powershell
-cd C:\Users\paolo\StudioProjects\StudyDesk\studydesk-backend
+cd .\studydesk-backend
 $env:SPRING_H2_CONSOLE_ENABLED = "true"
 .\mvnw.cmd spring-boot:run
 ```
 
-Deja esta terminal **abierta** durante la demostración. Spring Boot se ejecuta en `http://localhost:8080` y utiliza **Java 21**. La variable de entorno habilita la consola web H2 durante esa ejecución, sin cambiar la configuración guardada del proyecto. La dependencia `spring-boot-h2console` ya está incluida en `pom.xml`.
+La variable habilita la consola SQL de H2 únicamente para esta ejecución local. **Mantener abierta esta terminal** mientras se utiliza el backend. El servidor se inicia en `http://localhost:8080`.
 
-Desde una **segunda terminal**, comprueba que el servidor está escuchando:
+Si la terminal ya está dentro de `studydesk-backend`, ejecutar solo las dos últimas líneas. Para comprobar que el puerto está disponible, utilizar **otra terminal**:
 
 ```powershell
 Test-NetConnection localhost -Port 8080
 ```
 
-Busca `TcpTestSucceeded : True`.
+El campo `TcpTestSucceeded` debe indicar `True`.
 
-### 2. Ver las tablas y ejecutar consultas SQL
+> **Importante:** iniciar el backend desde `studydesk-backend`. La ruta del archivo de base de datos es relativa al directorio de ejecución; iniciarlo desde otra ubicación podría abrir otra base H2.
 
-Con el servidor iniciado y la consola habilitada, abre:
+### 2. Abrir la consola SQL de H2
 
-**http://localhost:8080/h2-console**
+Con el backend iniciado, abrir en un navegador:
 
-En el formulario de conexión utiliza:
+**[http://localhost:8080/h2-console](http://localhost:8080/h2-console)**
+
+Introducir estos valores:
 
 | Campo | Valor |
 |---|---|
-| Driver Class | `org.h2.Driver` |
-| JDBC URL | `jdbc:h2:file:./data/studydesk` |
-| User Name | `sa` |
-| Password | *(vacío)* |
+| **Driver Class** | `org.h2.Driver` |
+| **JDBC URL** | `jdbc:h2:file:./data/studydesk` |
+| **User Name** | `sa` |
+| **Password** | Vacío |
 
-Presiona **Connect**. A continuación, puedes copiar estas consultas SQL para enseñar los datos reales del servidor:
+Seleccionar **Connect**. Desde el editor SQL se pueden consultar las tablas de H2 con los siguientes comandos:
 
 ```sql
--- Entregas, de la más reciente a la más antigua
+-- Listar las tablas disponibles
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_SCHEMA = 'PUBLIC'
+ORDER BY TABLE_NAME;
+
+-- Consultar entregas, comenzando por las más recientes
 SELECT ID, TITULO, MATERIA, FECHA, CORREO_USUARIO, ID_CLIENTE
 FROM ENTREGAS
 ORDER BY ID DESC;
 
--- Apuntes guardados
+-- Consultar apuntes, comenzando por los más recientes
 SELECT ID, TITULO, MATERIA, CONTENIDO, FECHA, CORREO_USUARIO, ID_CLIENTE
 FROM APUNTES
 ORDER BY ID DESC;
 
--- Cantidad total de registros
+-- Contar los registros
 SELECT COUNT(*) AS TOTAL_ENTREGAS FROM ENTREGAS;
 SELECT COUNT(*) AS TOTAL_APUNTES FROM APUNTES;
 ```
 
-Para filtrar las entregas de una cuenta de ejemplo, **reemplaza el correo**:
+Para filtrar los registros por correo, sustituir el valor del ejemplo por el correo de una cuenta existente:
 
 ```sql
 SELECT ID, TITULO, MATERIA, FECHA, ID_CLIENTE
@@ -69,229 +78,232 @@ WHERE LOWER(CORREO_USUARIO) = LOWER('alumno@example.com')
 ORDER BY ID DESC;
 ```
 
-**No uses `DROP`, `DELETE` ni `UPDATE` para esta demostración:** basta con `SELECT`. Si las tablas salen vacías, revisa que el servidor se haya iniciado en la carpeta `studydesk-backend` y que la URL JDBC sea la indicada.
+Las consultas `SELECT` son suficientes para examinar los registros **sin alterar los datos**. Para comprobar una inserción, crear una nueva entrega o un apunte desde Android y volver a ejecutar la consulta correspondiente en H2.
 
-**Nota sobre H2:** si `/h2-console` no abre, comprueba los mensajes de inicio de Spring Boot. La consola es una función de desarrollo; mantenerla habilitada únicamente para la presentación.
+**¿Por qué H2 Console y no MySQL Workbench?** El backend usa una base **H2**, no MySQL. MySQL Workbench y HeidiSQL no se conectan directamente a esa base tal como está configurada. La consola H2 incluida en el proyecto permite ejecutar SQL y visualizar los datos sin migraciones ni instalaciones adicionales.
 
-### 3. Consultar directamente la API REST con PowerShell
+### 3. Ejecutar Android
 
-Con Spring Boot encendido, desde otra terminal:
+1. Abrir la carpeta principal de **StudyDesk** en Android Studio.
+2. Esperar la sincronización de Gradle.
+3. Elegir un emulador Android y presionar **Run**.
+4. Iniciar sesión o registrar una cuenta.
+5. Crear apuntes y entregas y consultar sus registros desde la pestaña **Servidor** o la consola H2.
+
+**Direcciones del backend:**
+
+| Entorno | URL |
+|---|---|
+| Navegador o PowerShell en Windows | `http://localhost:8080/` |
+| Emulador de Android Studio | `http://10.0.2.2:8080/` |
+
+`10.0.2.2` permite que el emulador acceda al equipo anfitrión. Un teléfono físico necesitaría una configuración de red diferente.
+
+### 4. Consultar los datos desde PowerShell
+
+Además de SQL, el backend ofrece una API REST. En otra terminal, escribir el correo de la cuenta cuyos registros se quieren consultar:
 
 ```powershell
-$correo = "alumno@example.com"  # Reemplazar por la cuenta usada en la demo
+$correo = "alumno@example.com"
 $correoUrl = [uri]::EscapeDataString($correo)
 
-Invoke-RestMethod "http://localhost:8080/api/apuntes/usuario/correo/$correoUrl" |
-    Format-Table id, titulo, materia, fecha, correoUsuario, idCliente
-
-Invoke-RestMethod "http://localhost:8080/api/entregas/usuario/correo/$correoUrl" |
-    Format-Table id, titulo, materia, fecha, correoUsuario, idCliente
+Invoke-RestMethod "http://localhost:8080/api/entregas/usuario/correo/$correoUrl" | Format-Table id, titulo, materia, fecha, idCliente
+Invoke-RestMethod "http://localhost:8080/api/apuntes/usuario/correo/$correoUrl" | Format-Table id, titulo, materia, fecha, idCliente
 ```
 
-También puedes abrir rutas en el navegador:
+Consultar un registro por su ID remoto:
 
-- `http://localhost:8080/api/apuntes/usuario/correo/alumno@example.com`
-- `http://localhost:8080/api/entregas/usuario/correo/alumno@example.com`
-- `http://localhost:8080/api/apuntes/11` *(ID de ejemplo)*
-- `http://localhost:8080/api/entregas/46` *(ID de ejemplo)*
+```powershell
+Invoke-RestMethod "http://localhost:8080/api/entregas/1" | Format-List
+Invoke-RestMethod "http://localhost:8080/api/apuntes/1" | Format-List
+```
 
-Los IDs pueden ser distintos en cada instalación. Consultar primero los IDs reales desde la consola H2.
+Los IDs `1` son ejemplos: reemplazarlos por los valores que existan en H2. Un registro inexistente devuelve **HTTP 404**.
 
-### 4. Ejecutar la aplicación en Android Studio
+### 5. Ejecutar las pruebas del backend
 
-1. Abrir la carpeta principal de StudyDesk en **Android Studio**.
-2. Esperar a que finalice la sincronización de Gradle.
-3. Iniciar un **emulador Android** y presionar **Run**.
-4. Registrar una cuenta o iniciar sesión.
-5. Crear un apunte y una entrega.
-6. Entrar en la pestaña **Servidor** de StudyDesk para consultar la API.
-7. Volver a H2 y repetir las consultas `SELECT` para ver los registros creados.
+Desde una terminal ubicada en `studydesk-backend`:
 
-**Direcciones distintas:**
+```powershell
+.\mvnw.cmd clean test
+```
 
-- Navegador de Windows: `http://localhost:8080/`.
-- Emulador Android: `http://10.0.2.2:8080/`, configurado en `RetrofitClient.kt`.
+El resultado esperado es `BUILD SUCCESS`. El proyecto incluye pruebas de controladores, integración de la API y prevención de duplicados. Las pruebas de integración utilizan bases de datos **H2 temporales en memoria**, separadas de la base persistente del proyecto.
 
-`10.0.2.2` funciona para el emulador Android, **no directamente para un teléfono físico**. Un teléfono real requiere configurar la IP local del computador y los permisos de red correspondientes.
+### 6. Verificar la sincronización sin conexión
 
-### 5. Mostrar la sincronización automática sin conexión
+1. Iniciar sesión en StudyDesk con el backend funcionando.
+2. Detener Spring Boot con **Ctrl+C** en la terminal donde se ejecuta.
+3. Crear un apunte y una entrega. Ambos deben quedar guardados en **Room**, incluso cuando el servidor no responde.
+4. Iniciar nuevamente Spring Boot con los comandos del paso 1.
+5. Regresar a StudyDesk o volver a abrir la aplicación: se comprobarán los registros pendientes.
+6. Consultar la pestaña **Servidor**, la consola H2 o los endpoints REST para confirmar que aparecen.
+7. Repetir la sincronización y comprobar que no se generan registros duplicados.
 
-1. Con la aplicación abierta y la sesión iniciada, **detén Spring Boot** mediante `Ctrl+C`.
-2. Crea **un apunte y una entrega**. Ambos deben guardarse en Room, aunque falle el envío remoto.
-3. Vuelve a iniciar Spring Boot con el comando del apartado 1.
-4. Trae StudyDesk al primer plano o vuelve a abrirla.
-5. Revisa la pestaña **Servidor** y las tablas H2: ahora deben existir los registros creados sin conexión.
-6. Vuelve a sincronizar: **no deben generarse duplicados**.
-
-En **Logcat**, filtra por la etiqueta `StudyDeskSync`. Los errores `ConnectException` son esperados mientras el servidor esté apagado; lo importante es que la recuperación posterior enlace los registros de Room con Spring Boot:
+En Android Studio, filtrar **Logcat** por la etiqueta `StudyDeskSync`. Los errores de conexión mientras Spring Boot está detenido son esperados. Una sincronización recuperada puede mostrar mensajes similares a los siguientes:
 
 ```text
 StudyDeskSync: Pendiente vinculado. Room: 5, Spring Boot: 11
 StudyDeskSync: Entrega pendiente vinculada. Room: 7, Spring Boot: 46
 ```
 
-Estos IDs son ejemplos de una prueba realizada; pueden variar.
-
-### 6. Ejecutar las pruebas automatizadas
-
-Desde la carpeta `studydesk-backend`:
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-Resultado esperado: **`BUILD SUCCESS`**. Las pruebas de integración usan una **base H2 temporal**, distinta de los datos persistentes de la demostración.
-
-### 7. Apagar el servidor al terminar
-
-En la terminal de Spring Boot presiona **`Ctrl+C`**. No elimines archivos de `studydesk-backend/data/`: ahí se guarda la base de datos H2 persistente.
+Los IDs varían entre instalaciones.
 
 ---
 
-## Integrantes
+## Características principales
 
-- Paolo Muñoz
-- Benjamín Farias
-- Alexis Valencia
+### Autenticación y cuentas
 
-## Funcionalidades de StudyDesk
+- Registro e inicio de sesión con nombre, correo, contraseña y perfil.
+- Validaciones de formularios y comprobación de correos duplicados.
+- Persistencia de usuarios con Room y conservación de la sesión con SharedPreferences.
+- Separación de apuntes y entregas según el usuario que inició sesión.
 
-### Registro e inicio de sesión
+### Inicio y organización
 
-- Registro con nombre, correo, contraseña y perfil (Estudiante de Derecho o Abogado/a).
-- Validación de campos, formato de correo y correos ya registrados.
-- Inicio y cierre de sesión, conservando la sesión con `SharedPreferences`.
-- Cuentas identificadas por su ID de usuario en Room, aunque tengan el mismo nombre.
-
-### Pantalla Inicio
-
-- Bienvenida personalizada, últimas entregas y apuntes recientes.
-- Acceso al material de estudio.
-- Animaciones de interfaz y notificación demostrativa de cambio normativo.
-
-### Entregas
-
-- Crear entregas por materia, título y fecha.
-- Usar un calendario, consultar y filtrar entregas.
-- Eliminar entregas mediante confirmación.
-- Guardar en Room y sincronizar con Spring Boot cuando haya conexión.
-- Recuperar automáticamente las **creaciones pendientes** después de una desconexión.
-
-### Apuntes
-
-- Crear, consultar, editar y eliminar apuntes.
-- Filtrar por materia y compartir mediante aplicaciones de Android.
-- Guardar en Room y crear/editar/eliminar registros remotos con conexión.
-- Recuperar automáticamente las **creaciones pendientes** cuando regresa el servidor.
+- Pantalla de inicio con bienvenida personalizada, entregas próximas y apuntes recientes.
+- Animaciones, navegación mediante barra inferior y notificación demostrativa de actualización normativa.
+- Gestión de entregas: creación, listado, selección de fecha, filtros y eliminación con confirmación.
+- Gestión de apuntes: creación, lectura, edición, eliminación, filtros y opción para compartir mediante aplicaciones de Android.
 
 ### Material jurídico y comentarios
 
-- Consultar documentos PDF de Derecho Civil, Penal y Constitucional.
-- Buscar materiales por título, materia o descripción.
-- Leer PDF locales mediante `PdfRenderer`.
-- Publicar, editar y eliminar comentarios asociados a documentos.
-- Restringir la edición y eliminación de comentarios a su autor.
-- Los PDF se incluyen en `app/src/main/assets/` y se actualizan manualmente.
-- Los comentarios están en Room y **no** se sincronizan con Spring Boot.
+- Consulta local de documentos PDF jurídicos, como Código Civil, Código Penal y material de Derecho Constitucional.
+- Búsqueda de documentos y lector integrado mediante `PdfRenderer`.
+- Comentarios asociados a documentos, con creación, edición y eliminación de comentarios propios.
+- Los PDF se almacenan en `app/src/main/assets/`; su información está definida en `model/MaterialEstudio.kt`.
 
-### Notificaciones y pantalla Servidor
+### Integración con Spring Boot
 
-- Notificación nativa demostrativa con permiso en Android 13 o superior.
-- Pantalla **Servidor** para consultar los apuntes y las entregas remotos, actualizar listas y ejecutar sincronización manual de pendientes.
-- Además, la comprobación de pendientes se ejecuta automáticamente al regresar a la aplicación.
+- API REST para apuntes y entregas.
+- Guardado local en Room y sincronización de creaciones con el backend.
+- Sincronización automática de pendientes al regresar a la aplicación.
+- Pantalla **Servidor** para consultar registros remotos y ejecutar verificaciones manuales.
+- Identificador estable `idCliente` para reconocer reintentos y evitar duplicados de creación.
 
-## Arquitectura y bases de datos
+## Arquitectura
 
-La aplicación sigue una organización **MVVM (Model–View–ViewModel)** con repositorios, Jetpack Compose y Room.
+StudyDesk utiliza una organización **MVVM (Model–View–ViewModel)** y una capa de repositorios.
 
 | Componente | Responsabilidad |
 |---|---|
-| `ui/` | Pantallas y navegación con Compose |
-| `viewmodel/` | Estado y operaciones de cada pantalla |
-| `repository/` | Acceso a Room y a Retrofit |
-| `model/` | Entidades y DAO locales |
-| `network/` | API REST, Retrofit y modelos de transporte |
+| `app/src/main/java/com/example/studydesk/ui/` | Pantallas desarrolladas con Jetpack Compose |
+| `viewmodel/` | Estado y lógica de las pantallas |
+| `repository/` | Operaciones de Room y servicios de la API |
+| `model/` | Entidades, DAO y base de datos Room |
+| `network/` | Retrofit y modelos de transferencia de datos |
 | `util/` | Validaciones, fechas, sesión e identificadores de sincronización |
-| `notification/` | Notificaciones Android |
-| `pdf/` | Lectura de PDF |
-| `studydesk-backend/` | API Java con Spring Boot, JPA y H2 |
+| `notification/` | Notificaciones nativas |
+| `pdf/` | Lectura de documentos PDF |
+| `MainActivity.kt` | Inicialización de la aplicación y sincronización al regresar |
+| `studydesk-backend/` | Servicio Java con Spring Boot, JPA y H2 |
 
-### Diferencia entre Room y H2
+### Persistencia de datos
 
-| Información | Room (Android) | H2 (backend) |
-|---|---|---|
-| Usuarios | Sí | No: autenticación de la app es local |
-| Apuntes | Sí | Sí, copia sincronizada |
-| Entregas | Sí | Sí, copia sincronizada |
-| Comentarios | Sí | No |
-| Archivos PDF | `assets/` | No |
+| Información | Almacenamiento |
+|---|---|
+| Usuarios | Room (Android) |
+| Sesión activa | SharedPreferences (Android) |
+| Apuntes | Room y H2 |
+| Entregas | Room y H2 |
+| Comentarios | Room (Android) |
+| Material jurídico | Archivos PDF locales |
 
-**Room y H2 son bases distintas.** Room conserva la información local en Android; H2 conserva los apuntes y las entregas asociados a correos en el servidor.
+Las bases **Room y H2 son independientes**. H2 no guarda las cuentas locales ni los comentarios. El backend conserva la información sincronizada de apuntes y entregas.
 
-Configuración actual del backend, en `studydesk-backend/src/main/resources/application.properties`:
+La configuración H2 se encuentra en `studydesk-backend/src/main/resources/application.properties`:
 
 ```properties
 spring.datasource.url=jdbc:h2:file:./data/studydesk
+spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=
 spring.jpa.hibernate.ddl-auto=update
 ```
 
-**Importante:** `studydesk-backend/data/` está excluida de Git, de modo que una copia nueva del repositorio empezará con otra base H2 hasta que se creen sus propios registros.
+La base persistente se crea en la carpeta `studydesk-backend/data/`, excluida del repositorio mediante `.gitignore`. **Al clonar el proyecto en otro equipo no se transfieren automáticamente los datos creados en una instalación anterior.**
 
-### Prevención de duplicados
+## Tecnologías utilizadas
 
-Cada apunte o entrega nueva obtiene un identificador estable llamado **`idCliente`**, separado del ID de Room y del ID remoto. Si Android repite la misma creación porque perdió la respuesta de red, Spring Boot devuelve el registro ya creado. Si el mismo `idCliente` se reutiliza con datos distintos, la API responde con **HTTP 409**.
+- **Aplicación móvil:** Kotlin, Android Studio, Jetpack Compose, Material 3, Navigation Compose, Room 3, SQLite, KSP, Coroutines y Flow.
+- **Integración:** Retrofit 3 y Gson.
+- **Backend:** Java 21, Spring Boot 4.1.2, Spring Data JPA, H2 y Maven Wrapper.
+- **Recursos Android:** SharedPreferences, notificaciones, PdfRenderer y función nativa para compartir contenido.
+- **Colaboración:** Git, GitHub y Trello.
 
-## Tecnologías
+## Requisitos de ejecución
 
-**Android:** Kotlin, Jetpack Compose, Material 3, Navigation Compose, Room 3, SQLite, KSP, Retrofit, Gson, Coroutines, Flow, SharedPreferences y PdfRenderer.
+- **JDK 21** para Spring Boot.
+- Android Studio y SDK de Android configurados.
+- Emulador o dispositivo con **Android 7.0 (API 24)** o superior.
+- Conexión a Internet durante la descarga inicial de dependencias.
+- **Maven no necesita instalarse por separado**: el backend incluye Maven Wrapper (`mvnw.cmd`).
 
-**Backend:** Java 21, Spring Boot 4.1.2, Spring Web MVC, Spring Data JPA, H2 y Maven Wrapper.
+## Endpoints principales
 
-**Organización:** Git, GitHub y Trello.
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/apuntes/usuario/correo/{correo}` | Listar apuntes de un correo |
+| `GET` | `/api/apuntes/{id}` | Consultar un apunte |
+| `POST` | `/api/apuntes` | Crear un apunte |
+| `PUT` | `/api/apuntes/{id}` | Editar un apunte |
+| `DELETE` | `/api/apuntes/{id}` | Eliminar un apunte |
+| `GET` | `/api/entregas/usuario/correo/{correo}` | Listar entregas de un correo |
+| `GET` | `/api/entregas/{id}` | Consultar una entrega |
+| `POST` | `/api/entregas` | Crear una entrega |
+| `PUT` | `/api/entregas/{id}` | Editar una entrega |
+| `DELETE` | `/api/entregas/{id}` | Eliminar una entrega |
 
-## Rúbrica de evaluación
+El backend asocia los registros a su correo y reconoce el campo `idCliente` en las solicitudes de creación. La repetición de un mismo `idCliente` con datos diferentes devuelve `HTTP 409`.
+
+## Requisitos académicos implementados
 
 | Requisito | Implementación |
 |---|---|
-| Formularios | Login, registro, apuntes, entregas, comentarios |
-| Validación | `Validaciones.kt` y mensajes visuales |
+| Formularios | Login, registro, entregas, apuntes y comentarios |
+| Validación de campos | Clase `Validaciones.kt` y mensajes en interfaz |
 | Imagen | Logo de StudyDesk |
-| Animación | Inicio y estados de carga |
-| Modal | Confirmaciones, formularios y calendario |
-| Persistencia | Room (usuarios, apuntes, entregas, comentarios) |
+| Animación | Animaciones en Inicio y estados de carga |
+| Modal | Formularios, calendarios y confirmaciones |
+| Persistencia local | Room para usuarios, apuntes, entregas y comentarios |
 | Navegación | Navigation Compose y barra inferior |
-| Recurso nativo | Notificaciones y compartir apuntes |
-| Git y Trello | Control de versiones y organización del equipo |
+| Recurso nativo | Notificaciones y función Compartir |
+| Colaboración | Git/GitHub y Trello |
 
-## Pruebas realizadas
+## Validaciones realizadas
+
+Se realizaron comprobaciones del funcionamiento de la aplicación y de la API, entre ellas:
 
 - Creación de apuntes y entregas con conexión.
-- Creación local sin conexión y sincronización automática posterior.
-- Repetición de creaciones sin duplicación por `idCliente`.
-- Registros de igual contenido pero con identificadores distintos.
-- Edición de apuntes en Room y Spring Boot con conexión.
-- Eliminación local y remota de apuntes y entregas con conexión.
-- Consultas API por correo e ID, y consultas SQL de H2.
-- Pruebas de controladores e integración del backend.
+- Guardado local sin conexión y sincronización de registros pendientes después de recuperar el servidor.
+- Reintentos de creación sin duplicados utilizando `idCliente`.
+- Creación de registros independientes con el mismo contenido.
+- Edición de apuntes y entregas con conexión.
+- Eliminación de registros locales y remotos con conexión.
+- Consultas REST por correo e ID, y consultas SQL a H2.
+- Pruebas automatizadas de controladores e integración.
 
-## Limitaciones y posibles mejoras
+## Limitaciones y mejoras futuras
 
-StudyDesk es un **prototipo académico** y no un servicio listo para producción.
+StudyDesk es un **prototipo académico**. Entre las limitaciones de esta versión se encuentran:
 
-- El login es local y la API no incluye autenticación/autorización robustas de servidor.
-- Las credenciales locales no tienen el tratamiento de seguridad necesario para producción.
-- La sincronización automática actual recupera **creaciones pendientes**; **editar o eliminar sin conexión** no cuenta con una cola de cambios pendiente para aplicarse después.
-- Los comentarios y los PDF no se sincronizan con el servidor.
-- El backend se ejecuta localmente, no es un servidor publicado en Internet.
-- La consola H2 solo debe habilitarse en el entorno local de demostración.
-- Los avisos normativos son simulados y los PDF se actualizan manualmente.
-- No existe un conjunto general de migraciones Room para futuros cambios estructurales.
-- El material jurídico es académico; debe contrastarse con fuentes oficiales cuando importe su vigencia.
+- La autenticación de usuarios es local y los endpoints del backend no incluyen autorización adecuada para un servicio público.
+- El almacenamiento de contraseñas no está preparado para producción.
+- La sincronización automática se centra en **creaciones pendientes**: las ediciones y eliminaciones efectuadas sin conexión no disponen de una cola de operaciones diferidas.
+- Los comentarios y archivos PDF no se sincronizan con Spring Boot.
+- Los avisos de actualización normativa son simulados y las fechas de los materiales se mantienen manualmente.
+- La consola H2 debe habilitarse **solo en entornos locales de desarrollo**.
+- Las migraciones de esquema de Room para futuras versiones no están contempladas en este prototipo.
 
-Mejoras futuras: autenticación segura, recuperación de cuentas, sincronización diferida de ediciones/eliminaciones y despliegue seguro para varios dispositivos.
+Entre las mejoras posteriores posibles están el uso de autenticación segura, el despliegue de un backend accesible entre dispositivos, la sincronización de todas las operaciones y la actualización automática de material jurídico.
+
+## Equipo
+
+- Paolo Muñoz
+- Benjamín Farias
+- Alexis Valencia
 
 ---
 
-**StudyDesk — Desarrollo de Aplicaciones Móviles, Duoc UC.**
+**StudyDesk · Duoc UC · Desarrollo de Aplicaciones Móviles**
