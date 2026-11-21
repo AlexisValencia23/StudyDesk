@@ -1,10 +1,152 @@
 # StudyDesk
 
-**Aplicación móvil de estudio y organización para estudiantes de Derecho y profesionales del área jurídica.**
+**Aplicación Android para organizar entregas y apuntes, consultar material jurídico y compartir comentarios.**  
+Proyecto académico de **Desarrollo de Aplicaciones Móviles (DSY1105), Duoc UC — caso 13**.
 
-Proyecto desarrollado para la asignatura **Desarrollo de Aplicaciones Móviles (DSY1105)** de **Duoc UC**, correspondiente al caso 13.
+## Guía rápida para mostrar el proyecto al profesor
 
-StudyDesk permite organizar entregas académicas, crear apuntes personales, consultar material de legislación chilena en PDF y compartir comentarios sobre los documentos de estudio.
+> **Importante:** los siguientes comandos están pensados para **Windows PowerShell**, con el proyecto ya descargado. **Ejecuta Spring Boot desde `studydesk-backend`** para abrir la base H2 correcta. No borres la carpeta `data`.
+
+### 1. Encender Spring Boot y habilitar la consola H2
+
+Abre PowerShell desde la carpeta principal de StudyDesk y ejecuta:
+
+```powershell
+cd C:\Users\paolo\StudioProjects\StudyDesk\studydesk-backend
+$env:SPRING_H2_CONSOLE_ENABLED = "true"
+.\mvnw.cmd spring-boot:run
+```
+
+Deja esta terminal **abierta** durante la demostración. Spring Boot se ejecuta en `http://localhost:8080` y utiliza **Java 21**. La variable de entorno habilita la consola web H2 durante esa ejecución, sin cambiar la configuración guardada del proyecto. La dependencia `spring-boot-h2console` ya está incluida en `pom.xml`.
+
+Desde una **segunda terminal**, comprueba que el servidor está escuchando:
+
+```powershell
+Test-NetConnection localhost -Port 8080
+```
+
+Busca `TcpTestSucceeded : True`.
+
+### 2. Ver las tablas y ejecutar consultas SQL
+
+Con el servidor iniciado y la consola habilitada, abre:
+
+**http://localhost:8080/h2-console**
+
+En el formulario de conexión utiliza:
+
+| Campo | Valor |
+|---|---|
+| Driver Class | `org.h2.Driver` |
+| JDBC URL | `jdbc:h2:file:./data/studydesk` |
+| User Name | `sa` |
+| Password | *(vacío)* |
+
+Presiona **Connect**. A continuación, puedes copiar estas consultas SQL para enseñar los datos reales del servidor:
+
+```sql
+-- Entregas, de la más reciente a la más antigua
+SELECT ID, TITULO, MATERIA, FECHA, CORREO_USUARIO, ID_CLIENTE
+FROM ENTREGAS
+ORDER BY ID DESC;
+
+-- Apuntes guardados
+SELECT ID, TITULO, MATERIA, CONTENIDO, FECHA, CORREO_USUARIO, ID_CLIENTE
+FROM APUNTES
+ORDER BY ID DESC;
+
+-- Cantidad total de registros
+SELECT COUNT(*) AS TOTAL_ENTREGAS FROM ENTREGAS;
+SELECT COUNT(*) AS TOTAL_APUNTES FROM APUNTES;
+```
+
+Para filtrar las entregas de una cuenta de ejemplo, **reemplaza el correo**:
+
+```sql
+SELECT ID, TITULO, MATERIA, FECHA, ID_CLIENTE
+FROM ENTREGAS
+WHERE LOWER(CORREO_USUARIO) = LOWER('alumno@example.com')
+ORDER BY ID DESC;
+```
+
+**No uses `DROP`, `DELETE` ni `UPDATE` para esta demostración:** basta con `SELECT`. Si las tablas salen vacías, revisa que el servidor se haya iniciado en la carpeta `studydesk-backend` y que la URL JDBC sea la indicada.
+
+**Nota sobre H2:** si `/h2-console` no abre, comprueba los mensajes de inicio de Spring Boot. La consola es una función de desarrollo; mantenerla habilitada únicamente para la presentación.
+
+### 3. Consultar directamente la API REST con PowerShell
+
+Con Spring Boot encendido, desde otra terminal:
+
+```powershell
+$correo = "alumno@example.com"  # Reemplazar por la cuenta usada en la demo
+$correoUrl = [uri]::EscapeDataString($correo)
+
+Invoke-RestMethod "http://localhost:8080/api/apuntes/usuario/correo/$correoUrl" |
+    Format-Table id, titulo, materia, fecha, correoUsuario, idCliente
+
+Invoke-RestMethod "http://localhost:8080/api/entregas/usuario/correo/$correoUrl" |
+    Format-Table id, titulo, materia, fecha, correoUsuario, idCliente
+```
+
+También puedes abrir rutas en el navegador:
+
+- `http://localhost:8080/api/apuntes/usuario/correo/alumno@example.com`
+- `http://localhost:8080/api/entregas/usuario/correo/alumno@example.com`
+- `http://localhost:8080/api/apuntes/11` *(ID de ejemplo)*
+- `http://localhost:8080/api/entregas/46` *(ID de ejemplo)*
+
+Los IDs pueden ser distintos en cada instalación. Consultar primero los IDs reales desde la consola H2.
+
+### 4. Ejecutar la aplicación en Android Studio
+
+1. Abrir la carpeta principal de StudyDesk en **Android Studio**.
+2. Esperar a que finalice la sincronización de Gradle.
+3. Iniciar un **emulador Android** y presionar **Run**.
+4. Registrar una cuenta o iniciar sesión.
+5. Crear un apunte y una entrega.
+6. Entrar en la pestaña **Servidor** de StudyDesk para consultar la API.
+7. Volver a H2 y repetir las consultas `SELECT` para ver los registros creados.
+
+**Direcciones distintas:**
+
+- Navegador de Windows: `http://localhost:8080/`.
+- Emulador Android: `http://10.0.2.2:8080/`, configurado en `RetrofitClient.kt`.
+
+`10.0.2.2` funciona para el emulador Android, **no directamente para un teléfono físico**. Un teléfono real requiere configurar la IP local del computador y los permisos de red correspondientes.
+
+### 5. Mostrar la sincronización automática sin conexión
+
+1. Con la aplicación abierta y la sesión iniciada, **detén Spring Boot** mediante `Ctrl+C`.
+2. Crea **un apunte y una entrega**. Ambos deben guardarse en Room, aunque falle el envío remoto.
+3. Vuelve a iniciar Spring Boot con el comando del apartado 1.
+4. Trae StudyDesk al primer plano o vuelve a abrirla.
+5. Revisa la pestaña **Servidor** y las tablas H2: ahora deben existir los registros creados sin conexión.
+6. Vuelve a sincronizar: **no deben generarse duplicados**.
+
+En **Logcat**, filtra por la etiqueta `StudyDeskSync`. Los errores `ConnectException` son esperados mientras el servidor esté apagado; lo importante es que la recuperación posterior enlace los registros de Room con Spring Boot:
+
+```text
+StudyDeskSync: Pendiente vinculado. Room: 5, Spring Boot: 11
+StudyDeskSync: Entrega pendiente vinculada. Room: 7, Spring Boot: 46
+```
+
+Estos IDs son ejemplos de una prueba realizada; pueden variar.
+
+### 6. Ejecutar las pruebas automatizadas
+
+Desde la carpeta `studydesk-backend`:
+
+```powershell
+.\mvnw.cmd clean test
+```
+
+Resultado esperado: **`BUILD SUCCESS`**. Las pruebas de integración usan una **base H2 temporal**, distinta de los datos persistentes de la demostración.
+
+### 7. Apagar el servidor al terminar
+
+En la terminal de Spring Boot presiona **`Ctrl+C`**. No elimines archivos de `studydesk-backend/data/`: ahí se guarda la base de datos H2 persistente.
+
+---
 
 ## Integrantes
 
@@ -12,227 +154,144 @@ StudyDesk permite organizar entregas académicas, crear apuntes personales, cons
 - Benjamín Farias
 - Alexis Valencia
 
-## Funcionalidades principales
+## Funcionalidades de StudyDesk
 
-### 1. Registro e inicio de sesión
+### Registro e inicio de sesión
 
-- Registro de usuarios con nombre, correo, contraseña y perfil.
-- Perfiles disponibles: Estudiante de Derecho y Abogado/a.
-- Validación de campos obligatorios, formato de correo y longitud mínima de contraseña.
-- Comprobación de correos electrónicos ya registrados.
-- Inicio y cierre de sesión.
-- Conservación de la sesión mediante SharedPreferences.
-- Identificación de cada cuenta mediante un ID único generado por Room.
+- Registro con nombre, correo, contraseña y perfil (Estudiante de Derecho o Abogado/a).
+- Validación de campos, formato de correo y correos ya registrados.
+- Inicio y cierre de sesión, conservando la sesión con `SharedPreferences`.
+- Cuentas identificadas por su ID de usuario en Room, aunque tengan el mismo nombre.
 
-Cada usuario puede tener el mismo nombre que otra persona sin que eso afecte la identificación de su cuenta.
+### Pantalla Inicio
 
-### 2. Pantalla de Inicio
+- Bienvenida personalizada, últimas entregas y apuntes recientes.
+- Acceso al material de estudio.
+- Animaciones de interfaz y notificación demostrativa de cambio normativo.
 
-- Bienvenida personalizada con el nombre del usuario.
-- Resumen de las últimas entregas registradas.
-- Visualización de apuntes recientes.
-- Acceso directo al material de estudio.
-- Botón de demostración para simular una notificación de cambio normativo.
-- Animaciones de aparición en las tarjetas de información.
+### Entregas
 
-Los resúmenes de entregas y apuntes corresponden únicamente a la cuenta que inició sesión.
+- Crear entregas por materia, título y fecha.
+- Usar un calendario, consultar y filtrar entregas.
+- Eliminar entregas mediante confirmación.
+- Guardar en Room y sincronizar con Spring Boot cuando haya conexión.
+- Recuperar automáticamente las **creaciones pendientes** después de una desconexión.
 
-### 3. Gestión de entregas
+### Apuntes
 
-- Crear entregas con materia, título y fecha.
-- Seleccionar fechas utilizando un calendario.
-- Consultar todas las entregas registradas.
-- Filtrar entregas según una fecha seleccionada.
-- Eliminar entregas con una ventana de confirmación.
-- Validar los campos antes de guardar.
-- Guardar las entregas en Room.
+- Crear, consultar, editar y eliminar apuntes.
+- Filtrar por materia y compartir mediante aplicaciones de Android.
+- Guardar en Room y crear/editar/eliminar registros remotos con conexión.
+- Recuperar automáticamente las **creaciones pendientes** cuando regresa el servidor.
 
-**Separación por usuario:** cada entrega se asocia al ID de su propietario. Una cuenta no puede ver ni eliminar las entregas de otra.
+### Material jurídico y comentarios
 
-### 4. Gestión de apuntes
+- Consultar documentos PDF de Derecho Civil, Penal y Constitucional.
+- Buscar materiales por título, materia o descripción.
+- Leer PDF locales mediante `PdfRenderer`.
+- Publicar, editar y eliminar comentarios asociados a documentos.
+- Restringir la edición y eliminación de comentarios a su autor.
+- Los PDF se incluyen en `app/src/main/assets/` y se actualizan manualmente.
+- Los comentarios están en Room y **no** se sincronizan con Spring Boot.
 
-- Crear apuntes indicando materia, título y contenido.
-- Consultar el contenido completo de un apunte.
-- Editar apuntes existentes.
-- Eliminar apuntes con confirmación.
-- Filtrar apuntes por materia.
-- Compartir apuntes mediante aplicaciones disponibles en Android, como correo electrónico o WhatsApp.
-- Validar los campos antes de guardar.
-- Mantener los apuntes almacenados con Room.
+### Notificaciones y pantalla Servidor
 
-**Separación por usuario:** cada apunte pertenece a una cuenta específica. Los usuarios únicamente pueden visualizar, editar y eliminar sus propios apuntes.
+- Notificación nativa demostrativa con permiso en Android 13 o superior.
+- Pantalla **Servidor** para consultar los apuntes y las entregas remotos, actualizar listas y ejecutar sincronización manual de pendientes.
+- Además, la comprobación de pendientes se ejecuta automáticamente al regresar a la aplicación.
 
-### 5. Material de estudio
+## Arquitectura y bases de datos
 
-La aplicación incluye documentos en formato PDF para consulta académica.
+La aplicación sigue una organización **MVVM (Model–View–ViewModel)** con repositorios, Jetpack Compose y Room.
 
-| Materia | Documento |
+| Componente | Responsabilidad |
 |---|---|
-| Derecho Civil | Código Civil |
-| Derecho Penal | Código Penal |
-| Derecho Constitucional | Material de Derecho Constitucional |
+| `ui/` | Pantallas y navegación con Compose |
+| `viewmodel/` | Estado y operaciones de cada pantalla |
+| `repository/` | Acceso a Room y a Retrofit |
+| `model/` | Entidades y DAO locales |
+| `network/` | API REST, Retrofit y modelos de transporte |
+| `util/` | Validaciones, fechas, sesión e identificadores de sincronización |
+| `notification/` | Notificaciones Android |
+| `pdf/` | Lectura de PDF |
+| `studydesk-backend/` | API Java con Spring Boot, JPA y H2 |
 
-Funciones disponibles:
+### Diferencia entre Room y H2
 
-- Buscar documentos por materia, título o descripción.
-- Abrir y leer archivos PDF dentro de la aplicación.
-- Desplazarse entre las páginas del documento.
-- Consultar la fecha de actualización registrada para cada material.
-- Abrir una sección de comentarios asociada a cada documento.
+| Información | Room (Android) | H2 (backend) |
+|---|---|---|
+| Usuarios | Sí | No: autenticación de la app es local |
+| Apuntes | Sí | Sí, copia sincronizada |
+| Entregas | Sí | Sí, copia sincronizada |
+| Comentarios | Sí | No |
+| Archivos PDF | `assets/` | No |
 
-Los PDF están almacenados localmente en la carpeta `assets` y se visualizan mediante `PdfRenderer` de Android.
+**Room y H2 son bases distintas.** Room conserva la información local en Android; H2 conserva los apuntes y las entregas asociados a correos en el servidor.
 
-### 6. Comentarios del material de estudio
+Configuración actual del backend, en `studydesk-backend/src/main/resources/application.properties`:
 
-- Publicar comentarios asociados a un material.
-- Leer los comentarios realizados por otros usuarios.
-- Editar comentarios propios.
-- Eliminar comentarios propios con confirmación.
-- Validar que el contenido no esté vacío.
-- Guardar los comentarios mediante Room.
+```properties
+spring.datasource.url=jdbc:h2:file:./data/studydesk
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=update
+```
 
-**Control de permisos:** cada comentario guarda el nombre visible de su autor y el ID de la cuenta que lo creó.
+**Importante:** `studydesk-backend/data/` está excluida de Git, de modo que una copia nueva del repositorio empezará con otra base H2 hasta que se creen sus propios registros.
 
-Los botones para editar o eliminar aparecen únicamente en los comentarios propios. Además, las operaciones en Room verifican el ID del autor antes de modificar o eliminar un comentario.
+### Prevención de duplicados
 
-Esto evita que dos usuarios con el mismo nombre puedan modificar los comentarios del otro.
+Cada apunte o entrega nueva obtiene un identificador estable llamado **`idCliente`**, separado del ID de Room y del ID remoto. Si Android repite la misma creación porque perdió la respuesta de red, Spring Boot devuelve el registro ya creado. Si el mismo `idCliente` se reutiliza con datos distintos, la API responde con **HTTP 409**.
 
-Los comentarios se comparten entre las cuentas registradas en la misma instalación de la aplicación. No existe sincronización entre diferentes dispositivos.
+## Tecnologías
 
-### 7. Notificaciones
+**Android:** Kotlin, Jetpack Compose, Material 3, Navigation Compose, Room 3, SQLite, KSP, Retrofit, Gson, Coroutines, Flow, SharedPreferences y PdfRenderer.
 
-StudyDesk incorpora una demostración del sistema de notificaciones de Android.
+**Backend:** Java 21, Spring Boot 4.1.2, Spring Web MVC, Spring Data JPA, H2 y Maven Wrapper.
 
-Desde Inicio, el usuario puede activar un aviso simulado de modificación normativa.
+**Organización:** Git, GitHub y Trello.
 
-Se utiliza `NotificationManager` y se solicita el permiso correspondiente en Android 13 o superior.
+## Rúbrica de evaluación
 
-## Requisitos de la evaluación
-
-| Requisito | Implementación en StudyDesk |
+| Requisito | Implementación |
 |---|---|
-| Formulario | Registro, Login, Entregas, Apuntes y Comentarios |
-| Validación de campos | Clase `Validaciones.kt` y mensajes visuales |
-| Imagen | Logo de StudyDesk en Login |
-| Animación | Aparición de tarjetas en Inicio y animación de carga del Login |
-| Modal | Cuenta creada, formularios, calendario, comentarios y confirmaciones |
-| Persistencia con Room | Usuarios, apuntes, entregas y comentarios |
-| Navegación entre vistas | Navigation Compose y barra de navegación inferior |
-| Recurso nativo | Notificaciones de Android y selector para compartir |
-| Git | Control de versiones y registro de cambios en GitHub |
-| Trello | Organización y seguimiento de tareas del equipo |
+| Formularios | Login, registro, apuntes, entregas, comentarios |
+| Validación | `Validaciones.kt` y mensajes visuales |
+| Imagen | Logo de StudyDesk |
+| Animación | Inicio y estados de carga |
+| Modal | Confirmaciones, formularios y calendario |
+| Persistencia | Room (usuarios, apuntes, entregas, comentarios) |
+| Navegación | Navigation Compose y barra inferior |
+| Recurso nativo | Notificaciones y compartir apuntes |
+| Git y Trello | Control de versiones y organización del equipo |
 
-## Tecnologías utilizadas
+## Pruebas realizadas
 
-- **Kotlin:** lenguaje principal de programación.
-- **Android Studio:** entorno de desarrollo.
-- **Jetpack Compose:** construcción de las interfaces.
-- **Material Design 3:** componentes visuales.
-- **Navigation Compose:** navegación entre pantallas.
-- **Room 3:** persistencia de datos en una base de datos local.
-- **KSP:** procesamiento de anotaciones de Room.
-- **SQLite:** almacenamiento local de la información.
-- **SharedPreferences:** almacenamiento de la sesión del usuario.
-- **PdfRenderer:** visualización de documentos PDF.
-- **Coroutines y Flow:** operaciones asíncronas y actualización de información.
-- **Git y GitHub:** control de versiones.
-- **Trello:** organización del proyecto.
+- Creación de apuntes y entregas con conexión.
+- Creación local sin conexión y sincronización automática posterior.
+- Repetición de creaciones sin duplicación por `idCliente`.
+- Registros de igual contenido pero con identificadores distintos.
+- Edición de apuntes en Room y Spring Boot con conexión.
+- Eliminación local y remota de apuntes y entregas con conexión.
+- Consultas API por correo e ID, y consultas SQL de H2.
+- Pruebas de controladores e integración del backend.
 
-## Arquitectura del proyecto
+## Limitaciones y posibles mejoras
 
-El proyecto utiliza una organización basada en el patrón **MVVM (Model - View - ViewModel)**, junto con una capa Repository para acceder a la base de datos.
+StudyDesk es un **prototipo académico** y no un servicio listo para producción.
 
-| Carpeta o archivo | Responsabilidad |
-|---|---|
-| `model/` | Entidades de Room, DAO, base de datos y materiales de estudio |
-| `repository/` | Operaciones de acceso a los datos |
-| `viewmodel/` | Lógica de usuarios, entregas, apuntes y comentarios |
-| `ui/` | Pantallas y componentes visuales |
-| `ui/theme/` | Colores y configuración visual |
-| `notification/` | Notificaciones de Android |
-| `pdf/` | Lectura y renderización de archivos PDF |
-| `util/` | Validaciones, fechas y gestión de sesión |
-| `MainActivity.kt` | Inicialización de Room y de la aplicación |
+- El login es local y la API no incluye autenticación/autorización robustas de servidor.
+- Las credenciales locales no tienen el tratamiento de seguridad necesario para producción.
+- La sincronización automática actual recupera **creaciones pendientes**; **editar o eliminar sin conexión** no cuenta con una cola de cambios pendiente para aplicarse después.
+- Los comentarios y los PDF no se sincronizan con el servidor.
+- El backend se ejecuta localmente, no es un servidor publicado en Internet.
+- La consola H2 solo debe habilitarse en el entorno local de demostración.
+- Los avisos normativos son simulados y los PDF se actualizan manualmente.
+- No existe un conjunto general de migraciones Room para futuros cambios estructurales.
+- El material jurídico es académico; debe contrastarse con fuentes oficiales cuando importe su vigencia.
 
-La base de datos contiene cuatro entidades principales: `Usuario`, `Apunte`, `Entrega` y `Comentario`.
-
-Los apuntes y las entregas se relacionan con su propietario mediante `usuarioId`, mientras que los comentarios utilizan `autorId` para controlar los permisos de modificación.
-
-## Cómo ejecutar StudyDesk
-
-**Requisitos:**
-
-- Android Studio.
-- SDK de Android configurado.
-- Emulador o dispositivo físico con Android 7.0 (API 24) o superior.
-- Conexión a Internet para descargar las dependencias durante la configuración inicial.
-
-**Pasos:**
-
-1. Clonar o descargar este repositorio.
-2. Abrir el proyecto en Android Studio.
-3. Esperar a que finalice la sincronización de Gradle.
-4. Seleccionar un emulador o dispositivo Android.
-5. Ejecutar la aplicación mediante **Run**.
-6. Registrar una cuenta para comenzar a utilizar StudyDesk.
-7. Conceder el permiso de notificaciones cuando Android lo solicite, si corresponde.
-
-## Comprobación de funcionalidades
-
-Para comprobar la separación de usuarios:
-
-1. Registrar una cuenta A y crear un apunte y una entrega.
-2. Cerrar sesión y registrar o iniciar sesión con una cuenta B.
-3. Verificar que la cuenta B no pueda visualizar los registros de A.
-4. Crear nuevos registros desde B.
-5. Volver a la cuenta A y comprobar que conserva únicamente sus propios registros.
-
-Para comprobar los comentarios:
-
-1. Publicar un comentario desde la cuenta A.
-2. Entrar con la cuenta B.
-3. Verificar que B pueda leer el comentario, pero no editarlo ni eliminarlo.
-4. Publicar un comentario desde B.
-5. Confirmar que cada cuenta puede modificar exclusivamente sus propios comentarios.
-
-## Material de estudio y actualización
-
-Los documentos se encuentran en:
-
-`app/src/main/assets/`
-
-Para agregar o actualizar un documento:
-
-1. Incorporar el archivo PDF a la carpeta `assets`.
-2. Registrar o modificar su información en `model/MaterialEstudio.kt`.
-3. Actualizar manualmente el campo `fechaActualizacion`.
-
-Actualmente, los materiales y sus fechas de actualización son gestionados manualmente por el equipo.
-
-## Consideraciones del proyecto
-
-StudyDesk es un prototipo académico.
-
-- Los datos se almacenan localmente en el dispositivo.
-- La aplicación no utiliza un servidor ni sincronización en la nube.
-- Las contraseñas se almacenan sin cifrar, por lo que el sistema de autenticación no está preparado para un entorno de producción.
-- Los avisos de cambios normativos son simulados.
-- La actualización de los PDF se realiza manualmente.
-- La versión actual de Room no incorpora migraciones de base de datos. Durante el desarrollo, los cambios de estructura pueden requerir borrar los datos de la aplicación.
-- El material jurídico se incluye con fines académicos y debe contrastarse con las fuentes oficiales cuando se necesite consultar legislación vigente.
-
-## Mejoras futuras
-
-Como posibles mejoras posteriores al proyecto académico se consideran:
-
-- Almacenamiento seguro de contraseñas.
-- Recuperación de cuentas.
-- Sincronización de información entre dispositivos.
-- Actualización automática de documentos normativos.
-- Zoom mediante gestos en el lector de PDF.
-
-Estas mejoras no forman parte de las funcionalidades implementadas en la versión actual.
+Mejoras futuras: autenticación segura, recuperación de cuentas, sincronización diferida de ediciones/eliminaciones y despliegue seguro para varios dispositivos.
 
 ---
 
-**StudyDesk — Proyecto académico de Desarrollo de Aplicaciones Móviles, Duoc UC.**
+**StudyDesk — Desarrollo de Aplicaciones Móviles, Duoc UC.**
