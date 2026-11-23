@@ -22,8 +22,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("studydesk-release.jks")
+            storePassword = "studydesk123"
+            keyAlias = "studydesk"
+            keyPassword = "studydesk123"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             optimization {
                 enable = false
             }
@@ -63,6 +73,4 @@ dependencies {
     // Conexion con las APIs mediante Retrofit
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
-
-
 }
