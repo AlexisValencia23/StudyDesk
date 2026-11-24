@@ -1,8 +1,11 @@
+
 package com.example.studydesk.util
 
-import android.util.Patterns
-
 object Validaciones {
+
+    // Patrón básico de correo electrónico
+    private val patronCorreo =
+        Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
 
     // Validar nombre
     fun validarNombre(nombre: String): String? {
@@ -23,7 +26,7 @@ object Validaciones {
             return "El correo es obligatorio"
         }
 
-        if (!Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches()) {
+        if (!patronCorreo.matches(correo.trim())) {
             return "Ingresa un correo válido"
         }
 
@@ -48,6 +51,7 @@ object Validaciones {
         if (materia.isBlank()) {
             return "La materia es obligatoria"
         }
+
         return null
     }
 
@@ -56,6 +60,7 @@ object Validaciones {
         if (titulo.isBlank()) {
             return "El título es obligatorio"
         }
+
         return null
     }
 
@@ -64,6 +69,7 @@ object Validaciones {
         if (contenido.isBlank()) {
             return "El contenido es obligatorio"
         }
+
         return null
     }
 
@@ -72,6 +78,7 @@ object Validaciones {
         if (materia.isBlank()) {
             return "La materia es obligatoria"
         }
+
         return null
     }
 
@@ -80,6 +87,7 @@ object Validaciones {
         if (titulo.isBlank()) {
             return "El nombre del trabajo es obligatorio"
         }
+
         return null
     }
 
@@ -88,13 +96,16 @@ object Validaciones {
         if (fecha.isBlank()) {
             return "Debes seleccionar una fecha de entrega"
         }
+
         return null
     }
+
     // Validar contenido de un comentario
     fun validarComentario(texto: String): String? {
         if (texto.isBlank()) {
             return "Escribe algo antes de guardar"
         }
+
         return null
     }
 }
