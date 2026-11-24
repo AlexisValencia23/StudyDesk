@@ -119,10 +119,6 @@ class EntregaViewModel(
             val idCliente =
                 identificadorSync.entrega(idLocal.toInt())
 
-            Log.d(
-                "StudyDeskSync",
-                "Entrega guardada en Room. ID local: $idLocal"
-            )
 
             if (correo == null) {
                 _mensajeSincronizacion.value =
@@ -180,11 +176,6 @@ class EntregaViewModel(
                     _mensajeSincronizacion.value =
                         "Entrega guardada y vinculada con Spring Boot."
 
-                    Log.d(
-                        "StudyDeskSync",
-                        "Entrega vinculada. Room: $idLocal, " +
-                                "Spring Boot: $idServidor"
-                    )
                 } else {
                     _mensajeSincronizacion.value =
                         "Entrega enviada, pero no se pudo vincular en Room."
@@ -228,10 +219,6 @@ class EntregaViewModel(
                     usuarioId = usuarioId
                 )
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Entrega local eliminada. Room: ${entrega.id}"
-                )
 
                 _mensajeSincronizacion.value =
                     "Entrega local eliminada."
@@ -300,10 +287,6 @@ class EntregaViewModel(
                         "Entrega eliminada de Room y Spring Boot."
                 }
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Entrega eliminada. Room: ${entrega.id}"
-                )
 
             } catch (e: CancellationException) {
                 throw e
@@ -359,10 +342,6 @@ class EntregaViewModel(
                             "No hay entregas pendientes de sincronizacion."
                     }
 
-                    Log.d(
-                        "StudyDeskSync",
-                        "No hay entregas pendientes"
-                    )
                     return@launch
                 }
 
@@ -496,12 +475,6 @@ class EntregaViewModel(
                         idsUtilizados.add(idServidor)
                         vinculadas++
 
-                        Log.d(
-                            "StudyDeskSync",
-                            "Entrega pendiente vinculada. " +
-                                    "Room: ${entrega.id}, " +
-                                    "Spring Boot: $idServidor"
-                        )
                     } else {
                         pendientesRevision++
                     }

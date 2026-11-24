@@ -1,4 +1,3 @@
-
 package com.example.studydesk.viewmodel
 
 import android.util.Log
@@ -123,10 +122,6 @@ class ApunteViewModel(
             val idCliente =
                 identificadorSync.apunte(idLocal.toInt())
 
-            Log.d(
-                "StudyDeskSync",
-                "Apunte guardado en Room. ID local: $idLocal"
-            )
 
             if (correo == null) {
                 _mensajeSincronizacion.value =
@@ -186,11 +181,6 @@ class ApunteViewModel(
                     _mensajeSincronizacion.value =
                         "Apunte guardado y vinculado con Spring Boot."
 
-                    Log.d(
-                        "StudyDeskSync",
-                        "Apunte vinculado. Room: $idLocal, " +
-                                "Spring Boot: $idServidor"
-                    )
                 } else {
                     _mensajeSincronizacion.value =
                         "Apunte enviado, pero no se pudo vincular en Room."
@@ -248,10 +238,6 @@ class ApunteViewModel(
                 usuarioId = usuarioId
             )
 
-            Log.d(
-                "StudyDeskSync",
-                "Apunte editado en Room. ID: ${apunte.id}"
-            )
 
             val idServidor = apunte.servidorId
 
@@ -319,10 +305,6 @@ class ApunteViewModel(
                         "Apunte editado en Room y Spring Boot."
                 }
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Apunte editado en Spring Boot. ID: $idServidor"
-                )
 
             } catch (e: CancellationException) {
                 throw e
@@ -362,10 +344,6 @@ class ApunteViewModel(
                     usuarioId = usuarioId
                 )
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Apunte local eliminado. Room: ${apunte.id}"
-                )
 
                 _mensajeSincronizacion.value =
                     "Apunte local eliminado."
@@ -434,10 +412,6 @@ class ApunteViewModel(
                         "Apunte eliminado de Room y Spring Boot."
                 }
 
-                Log.d(
-                    "StudyDeskSync",
-                    "Apunte eliminado. Room: ${apunte.id}"
-                )
 
             } catch (e: CancellationException) {
                 throw e
@@ -493,10 +467,6 @@ class ApunteViewModel(
                             "No hay apuntes pendientes de sincronizacion."
                     }
 
-                    Log.d(
-                        "StudyDeskSync",
-                        "No hay apuntes pendientes"
-                    )
                     return@launch
                 }
 
@@ -631,12 +601,6 @@ class ApunteViewModel(
                         idsUtilizados.add(idServidor)
                         vinculados++
 
-                        Log.d(
-                            "StudyDeskSync",
-                            "Pendiente vinculado. " +
-                                    "Room: ${apunte.id}, " +
-                                    "Spring Boot: $idServidor"
-                        )
                     } else {
                         pendientesRevision++
                     }

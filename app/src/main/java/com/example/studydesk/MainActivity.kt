@@ -4,7 +4,6 @@ package com.example.studydesk
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -131,10 +130,6 @@ class MainActivity : ComponentActivity() {
         entregaViewModel.establecerUsuario(usuarioId)
         entregaViewModel.establecerCorreo(correo)
 
-        Log.d(
-            "StudyDeskSync",
-            "Comprobando sincronizacion automatica al abrir StudyDesk"
-        )
 
         apunteViewModel.sincronizarPendientes()
         entregaViewModel.sincronizarPendientes()
