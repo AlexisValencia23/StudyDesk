@@ -244,11 +244,13 @@ La base persistente se crea en la carpeta `studydesk-backend/data/`, excluida de
 
 | Método | Ruta | Descripción |
 |---|---|---|
+| `GET` | `/api/apuntes/usuario/{usuarioId}` | Listar apuntes de un usuario por su ID |
 | `GET` | `/api/apuntes/usuario/correo/{correo}` | Listar apuntes de un correo |
 | `GET` | `/api/apuntes/{id}` | Consultar un apunte |
 | `POST` | `/api/apuntes` | Crear un apunte |
 | `PUT` | `/api/apuntes/{id}` | Editar un apunte |
 | `DELETE` | `/api/apuntes/{id}` | Eliminar un apunte |
+| `GET` | `/api/entregas/usuario/{usuarioId}` | Listar entregas de un usuario por su ID |
 | `GET` | `/api/entregas/usuario/correo/{correo}` | Listar entregas de un correo |
 | `GET` | `/api/entregas/{id}` | Consultar una entrega |
 | `POST` | `/api/entregas` | Crear una entrega |
