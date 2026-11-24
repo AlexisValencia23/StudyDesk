@@ -298,6 +298,20 @@ StudyDesk es un **prototipo académico**. Entre las limitaciones de esta versió
 
 Entre las mejoras posteriores posibles están el uso de autenticación segura, el despliegue de un backend accesible entre dispositivos, la sincronización de todas las operaciones y la actualización automática de material jurídico.
 
+## APK firmado y llave
+
+El APK firmado en modo release está en [`release/StudyDesk-release.apk`](release/StudyDesk-release.apk).
+La llave de firma está en [`app/studydesk-release.jks`](app/studydesk-release.jks) y su configuración está en `app/build.gradle.kts` (bloque `signingConfigs`).
+
+| Dato | Valor |
+|---|---|
+| Alias | `studydesk` |
+| Contraseña del keystore | `studydesk123` |
+| Contraseña de la llave | `studydesk123` |
+
+Para generar el APK nuevamente se ejecuta `.\gradlew.bat assembleRelease`. El resultado queda en `app\build\outputs\apk\release\app-release.apk`.
+
+![Captura del APK firmado y de la llave .jks](docs/apk-firmado.png)
 ## Equipo
 
 - Paolo Muñoz
