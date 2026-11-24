@@ -4,6 +4,83 @@
 
 Proyecto desarrollado para **Desarrollo de Aplicaciones Móviles (DSY1105), Duoc UC — caso 13**. Integra una aplicación nativa en **Kotlin y Jetpack Compose**, persistencia local con **Room** y una API REST construida con **Spring Boot y H2**.
 
+## Guía paso a paso: ejecutar y ver la app en tiempo real
+
+Esta guía permite ejecutar el proyecto desde cero y comprobar que la app y el backend funcionan juntos. Se asume un PC con **JDK 21**, **Android Studio** y un emulador Android ya instalados.
+
+### Paso 1. Obtener el proyecto
+
+Clonar el repositorio (o abrir la carpeta si ya está en el equipo):
+
+```powershell
+git clone <URL-del-repositorio>
+cd StudyDesk
+```
+
+### Paso 2. Encender el backend (Spring Boot)
+
+```powershell
+cd .\studydesk-backend
+$env:SPRING_H2_CONSOLE_ENABLED = "true"
+.\mvnw.cmd spring-boot:run
+```
+
+- Esperar a que la terminal indique que Spring Boot arrancó. **Dejar esta terminal abierta** durante toda la demostración.
+- Para comprobar que responde, abrir en el navegador `http://localhost:8080/api/apuntes/usuario/correo/prueba@ejemplo.com`. Si aparece `[]`, el backend funciona (aún no hay datos).
+
+### Paso 3. Abrir la app en el emulador
+
+**Opción A: desde Android Studio**
+1. Abrir la carpeta principal `StudyDesk` y esperar a que termine la sincronización de Gradle.
+2. Abrir el emulador desde **Device Manager**.
+3. Presionar **Run**.
+
+**Opción B: con el APK firmado**
+1. Abrir el emulador desde **Device Manager**.
+2. Arrastrar `release/StudyDesk-release.apk` a la ventana del emulador.
+3. Si aparece un error de incompatibilidad, desinstalar primero la app StudyDesk del emulador y volver a arrastrar el APK.
+
+### Paso 4. Usar la app
+
+1. Presionar **Registrarse**, completar los datos e iniciar sesión.
+2. En **Apuntes**, crear un apunte nuevo, editarlo y eliminarlo.
+3. En **Entregas**, crear una entrega con fecha y eliminarla.
+4. En **Material**, abrir un documento jurídico y escribir un comentario.
+5. En **Inicio**, ver las entregas próximas y los apuntes recientes.
+
+### Paso 5. Ver los datos en tiempo real en el backend
+
+Después de crear un apunte o una entrega en la app, comprobar que llegó al servidor de tres formas:
+
+1. **Pestaña Servidor de la app:** muestra los registros guardados en Spring Boot.
+2. **Navegador:** abrir `http://localhost:8080/api/apuntes/usuario/correo/CORREO` (o `/api/entregas/...`), cambiando `CORREO` por el correo con el que se registró la cuenta.
+3. **Consola H2:** abrir `http://localhost:8080/h2-console` e ingresar los datos de la tabla de la sección *Abrir la consola SQL de H2*. Luego ejecutar:
+   ```sql
+   SELECT ID, TITULO, MATERIA, FECHA, CORREO_USUARIO FROM APUNTES ORDER BY ID DESC;
+   ```
+
+### Paso 6. Ejecutar las pruebas unitarias
+
+```powershell
+# Pruebas de la app (desde la carpeta principal)
+.\gradlew.bat test
+
+# Pruebas del backend (desde studydesk-backend)
+.\mvnw.cmd clean test
+```
+
+Ambas deben terminar en `BUILD SUCCESSFUL` / `BUILD SUCCESS`.
+
+### Paso 7. Revisar la evidencia del proyecto
+
+- **APK firmado y llave:** sección *APK firmado y llave*, al final de este documento.
+- **Commits por integrante:** pestaña *Commits* del repositorio en GitHub.
+- **Planificación:** tablero de Trello del proyecto: `<enlace-al-tablero-de-Trello>`.
+
+> **Nota:** el emulador accede al backend mediante `10.0.2.2`. Un teléfono físico necesitaría otra configuración de red.
+
+---
+
 ## Inicio rápido
 
 Estos comandos permiten iniciar la aplicación, consultar las tablas del servidor y ejecutar las pruebas del proyecto.
@@ -140,14 +217,6 @@ El resultado esperado es `BUILD SUCCESS`. El proyecto incluye pruebas de control
 6. Consultar la pestaña **Servidor**, la consola H2 o los endpoints REST para confirmar que aparecen.
 7. Repetir la sincronización y comprobar que no se generan registros duplicados.
 
-En Android Studio, filtrar **Logcat** por la etiqueta `StudyDeskSync`. Los errores de conexión mientras Spring Boot está detenido son esperados. Una sincronización recuperada puede mostrar mensajes similares a los siguientes:
-
-```text
-StudyDeskSync: Pendiente vinculado. Room: 5, Spring Boot: 11
-StudyDeskSync: Entrega pendiente vinculada. Room: 7, Spring Boot: 46
-```
-
-Los IDs varían entre instalaciones.
 
 ---
 
